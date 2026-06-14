@@ -1,0 +1,13 @@
+Report system implementation is in progress. Admin panel still needs: User Reports section + resolve/suspend endpoints + report viewing route/DB.
+
+Known status:
+- models/Report.js created
+- routes/reports.js created and mounted in app.js
+- User model updated with reportCount + isSuspended
+- public/dashboard.html includes Report User button for booked driver/passenger flow
+- public/profile.html recreated to show Reports count
+
+Remaining:
+- Update public/admin.html UI + implement backend handlers in routes/admin.js for report listing + resolve + suspend
+- Update login flow in routes/users.js to block suspended users (403)
+

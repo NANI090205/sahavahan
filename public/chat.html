@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+    }
+
+    header {
+      background: #007bff;
+      color: white;
+      padding: 15px;
+    }
+
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .chat-header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    #messages {
+      height: 70vh;
+      overflow-y: auto;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .message {
+      background: white;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 10px;
+      max-width: 80%;
+      word-break: break-word;
+    }
+
+    .mine {
+      background: #d4edda;
+      margin-left: auto;
+    }
+
+    .message .sender {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    #bottom {
+      display: flex;
+      padding: 10px;
+      background: white;
+      max-width: 900px;
+      margin: 0 auto 20px auto;
+      gap: 10px;
+    }
+
+    #messageInput {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .back-link {
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+      background: rgba(255,255,255,0.15);
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="chat-header">
+      <div>
+        <h1>Chat with <span id="receiverName"></span></h1>
+      </div>
+      <a class="back-link" href="dashboard.html">Back to Dashboard</a>
+    </div>
+  </header>
+
+  <div id="messages"></div>
+
+  <div id="bottom">
+    <input id="messageInput" type="text" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script>
+    const sender = localStorage.getItem("username");
+    const receiver = localStorage.getItem("chatReceiver");
+
+    if (!sender || !receiver || receiver === "undefined" || receiver === sender) {
+      window.location.href = "dashboard.html";
+    }
+
+    document.getElementById("receiverName").innerText = receiver;
+
+    async function loadMessages() {
+      try {
+        const response = await fetch(`/api/chat/${encodeURIComponent(sender)}/${encodeURIComponent(receiver)}`);
+        if (!response.ok) {
+          throw new Error("Failed to load messages");
+        }
+
+        const messages = await response.json();
+
+        const container = document.getElementById("messages");
+        container.innerHTML = "";
+
+        messages.forEach(msg => {
+          const div = document.createElement("div");
+          div.className = msg.sender === sender ? "message mine" : "message";
+
+          const senderDiv = document.createElement("div");
+          senderDiv.className = "sender";
+          senderDiv.textContent = msg.sender;
+
+          const textDiv = document.createElement("div");
+          textDiv.className = "text";
+          textDiv.textContent = msg.message;
+
+          div.appendChild(senderDiv);
+          div.appendChild(textDiv);
+
+          container.appendChild(div);
+        });
+
+        container.scrollTop = container.scrollHeight;
+      } catch (error) {
+        console.error("Load messages error:", error);
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      try {
+        const response = await fetch("/api/chat/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ sender, receiver, message })
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send message");
+        }
+
+        input.value = "";
+        await loadMessages();
+      } catch (error) {
+        console.error("Send message error:", error);
+        alert("Failed to send message.");
+      }
+    }
+
+    document.getElementById("messageInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    loadMessages();
+    setInterval(loadMessages, 2000);
+  </script>
+  <script src="notification-badge.js"></script>
+</body>
+</html>

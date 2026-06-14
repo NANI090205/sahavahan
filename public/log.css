@@ -1,0 +1,145 @@
+/* General reset and box sizing */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}
+
+/* Body styling with background image */
+body {
+    background-image: url("signupbg.jpg");
+    background-repeat: no-repeat;
+    background-size: auto;
+    background-position: center;
+    padding-top: 10%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+/* Container for the form */
+#container {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    padding: 40px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    animation: fadeIn 1s ease-in;
+}
+
+/* Header styling */
+h2 {
+    margin-bottom: 30px;
+    font-size: 2em;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Label styling */
+label {
+    display: block;
+    margin: 12px 0 6px;
+    text-align: left;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Input fields styling */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 16px;
+    margin-bottom: 15px;
+    transition: background 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Placeholder styling */
+input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Button styling */
+button {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.3s ease;
+    margin-top: 20px;
+}
+
+button:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Error message styling */
+#error-message {
+    color: #ff4d4d;
+    font-weight: bold;
+    margin-top: 12px;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Footer text with login/signup link */
+p {
+    margin-top: 18px;
+    font-size: 14px;
+}
+
+a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #ff9900;
+}
+
+/* Animation for container fade-in */
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Media query for responsiveness */
+@media (max-width: 480px) {
+    #container {
+        padding: 20px;
+        width: 90%;
+    }
+
+    h2 {
+        font-size: 1.8em;
+    }
+}

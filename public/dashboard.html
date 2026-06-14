@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — SahaVahan</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4338CA">
+  <meta name="description" content="User dashboard for SahaVahan: profile completion, ride history, waitlist, route alerts, trust score, and notifications." />
+  <meta name="robots" content="index,follow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main: #F7F8FC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-muted: #F0F2F8;
+      --primary: #4338CA;
+      --primary-light: #6366F1;
+      --primary-dim: rgba(67,56,202,0.07);
+      --accent: #0EA5E9;
+      --accent-dim: rgba(14,165,233,0.08);
+      --green: #059669;
+      --green-light: #10B981;
+      --green-dim: rgba(5,150,105,0.08);
+      --amber: #D97706;
+      --amber-light: #F59E0B;
+      --rose: #E11D48;
+      --text-main: #0D1117;
+      --text-muted: #5C6B82;
+      --border: #DDE3EE;
+      --border-hover: #B8C4D8;
+      --shadow-sm: 0 2px 8px rgba(13,17,23,0.05);
+      --shadow-md: 0 10px 30px rgba(13,17,23,0.09);
+      --shadow-lg: 0 24px 52px rgba(13,17,23,0.13);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.65;
+      cursor: none;
+    }
+
+    /* ══ CUSTOM CURSOR ══ */
+    #cursor-dot {
+      position: fixed; width: 10px; height: 10px;
+      background: var(--primary); border-radius: 50%;
+      pointer-events: none; z-index: 99999;
+      transform: translate(-50%,-50%);
+      transition: background 0.18s, width 0.18s, height 0.18s, border-radius 0.18s;
+      mix-blend-mode: multiply;
+    }
+    #cursor-ring {
+      position: fixed; width: 36px; height: 36px;
+      border: 2px solid rgba(67,56,202,0.4); border-radius: 50%;
+      pointer-events: none; z-index: 99998;
+      transform: translate(-50%,-50%);
+      transition: width 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  height 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  border-color 0.2s, background 0.2s, opacity 0.2s;
+    }
+    body.c-btn  #cursor-dot  { width: 18px; height: 18px; background: var(--primary); }
+    body.c-btn  #cursor-ring { width: 52px; height: 52px; border-color: rgba(67,56,202,0.6); background: rgba(67,56,202,0.05); }
+    body.c-card #cursor-dot  { width: 14px; height: 14px; background: var(--accent); }
+    body.c-card #cursor-ring { width: 46px; height: 46px; border-color: rgba(14,165,233,0.45); }
+    body.c-text #cursor-dot  { width: 3px; height: 20px; border-radius: 2px; background: var(--primary); }
+    body.c-text #cursor-ring { opacity: 0; }
+
+    /* ══ ORBS ══ */
+    .orb { position: fixed; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 640px; height: 640px; background: radial-gradient(circle,rgba(67,56,202,.1) 0%,transparent 70%); top:-100px; left:-140px; }
+    .orb-2 { width: 520px; height: 520px; background: radial-gradient(circle,rgba(14,165,233,.07) 0%,transparent 70%); top:40%; right:-90px; }
+    .orb-3 { width: 420px; height: 420px; background: radial-gradient(circle,rgba(5,150,105,.06) 0%,transparent 70%); bottom:8%; left:22%; }
+
+    /* ══ NAV ══ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 20px 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+    nav.scrolled {
+      background: rgba(255,255,255,0.9); backdrop-filter: blur(22px);
+      padding: 13px 52px; border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-logo-wrap {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .nav-logo-wrap:hover { transform: scale(1.03); }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff; box-shadow: 0 4px 12px rgba(67,56,202,0.3);
+      flex-shrink: 0;
+    }
+    .nav-logo-text {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.3px;
+    }
+    .nav-logo-text span { color: var(--primary); }
+
+    .nav-links { display: flex; align-items: center; gap: 2px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-body); font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted); text-decoration: none;
+      padding: 8px 15px; border-radius: 8px; transition: all 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: 5px; left: 50%; right: 50%;
+      height: 2px; background: var(--primary); border-radius: 2px;
+      transition: left 0.22s, right 0.22s;
+    }
+    .nav-links a:hover { color: var(--primary); background: var(--primary-dim); }
+    .nav-links a:hover::after { left: 15px; right: 15px; }
+    .nav-links a.active { color: var(--primary); background: var(--primary-dim); }
+    .nav-links a.active::after { left: 15px; right: 15px; }
+
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-user-pill {
+      display: flex; align-items: center; gap: 9px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 5px 14px 5px 5px;
+      font-size: 13px; color: var(--text-muted); box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .nav-user-pill:hover { border-color: var(--primary-light); box-shadow: 0 0 0 3px var(--primary-dim); }
+    .nav-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .nav-avatar-name { color: var(--text-main); font-weight: 500; }
+    .btn-logout {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 13px; font-weight: 500;
+      padding: 7px 14px; border-radius: 8px; cursor: none;
+      font-family: var(--font-body); transition: all 0.2s;
+    }
+    .btn-logout:hover { color: var(--rose); border-color: #FECDD3; background: #FFF1F2; }
+
+    /* ══ PAGE LAYOUT ══ */
+    .page-wrap { position: relative; z-index: 1; padding-top: 100px; }
+    .si { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    section { position: relative; z-index: 1; }
+    .section-sep { height: 1px; background: var(--border); }
+
+    /* ══ DASHBOARD HERO BANNER ══ */
+    .dash-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, var(--accent) 100%);
+      position: relative; overflow: hidden;
+      padding: 52px 0 60px;
+    }
+    .dash-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 44px 44px;
+      animation: gridDrift 22s linear infinite;
+    }
+    @keyframes gridDrift { from { background-position: 0 0; } to { background-position: 44px 44px; } }
+    .dash-hero-inner {
+      position: relative; z-index: 2;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 24px; flex-wrap: wrap;
+    }
+    .dash-hero-left { flex: 1; min-width: 260px; }
+    .dash-hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 100px; padding: 5px 14px;
+      font-size: 11.5px; font-weight: 600; letter-spacing: 1.4px;
+      text-transform: uppercase; color: rgba(255,255,255,0.9); margin-bottom: 14px;
+    }
+    .dash-hero-greeting {
+      font-size: 15px; color: rgba(255,255,255,0.7); margin-bottom: 6px;
+    }
+    .dash-hero-name {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800; letter-spacing: -1px;
+      color: #fff; margin-bottom: 10px; line-height: 1.1;
+    }
+    .dash-hero-code {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px; padding: 6px 14px;
+      font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500;
+    }
+    .dash-hero-code strong { color: #fff; font-family: var(--font-display); font-size: 14px; }
+    .dash-hero-right {
+      display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start;
+    }
+    .dash-hero-quick {
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 14px; padding: 18px 20px; min-width: 130px;
+      text-align: center; transition: all 0.22s; cursor: none;
+      text-decoration: none; display: block;
+    }
+    .dash-hero-quick:hover {
+      background: rgba(255,255,255,0.22); transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .dhq-icon { font-size: 22px; margin-bottom: 6px; color: rgba(255,255,255,0.9); }
+    .dhq-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 0.3px; }
+
+    /* ══ SHARED EYEBROW / HEADING ══ */
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 10px;
+    }
+    .sh {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 700; letter-spacing: -0.5px; line-height: 1.15;
+      color: var(--text-main);
+    }
+    .sm { font-size: 14px; color: var(--text-muted); max-width: 480px; margin-top: 8px; line-height: 1.6; }
+
+    /* ══ SECTION PADDING ══ */
+    .dash-section { padding: 52px 0; }
+    .dash-section-sm { padding: 36px 0; }
+
+    /* ══ REVEAL ══ */
+    .reveal { opacity: 0; transform: translateY(22px); transition: all 0.65s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ══ BUTTONS ══ */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; font-size: 13.5px; font-weight: 600;
+      padding: 11px 22px; border-radius: 10px; border: none; cursor: none;
+      text-decoration: none; transition: all 0.25s; font-family: var(--font-body);
+      box-shadow: 0 4px 14px rgba(67,56,202,0.28); position: relative; overflow: hidden;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(67,56,202,0.42); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-surface); color: var(--text-main); font-size: 13.5px; font-weight: 500;
+      padding: 11px 22px; border-radius: 10px; border: 1px solid var(--border); cursor: none;
+      text-decoration: none; transition: all 0.2s; font-family: var(--font-body); box-shadow: var(--shadow-sm);
+    }
+    .btn-ghost:hover { background: var(--bg-surface-muted); border-color: var(--border-hover); transform: translateY(-1px); }
+    .btn-danger {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #FFF1F2; color: var(--rose); font-size: 13px; font-weight: 600;
+      padding: 9px 18px; border-radius: 9px; border: 1px solid #FECDD3; cursor: none;
+      text-decoration: none; transition: all 0.2s; font-family: var(--font-body);
+    }
+    .btn-danger:hover { background: #FFE4E6; transform: translateY(-1px); }
+    .btn-sm {
+      padding: 7px 14px; font-size: 12.5px; border-radius: 8px;
+    }
+
+    /* ══ STATS CARDS — Pulse-style ══ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-top: 28px;
+    }
+    .stat-card {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px 22px; position: relative; overflow: hidden;
+      transition: all 0.3s; box-shadow: var(--shadow-sm);
+    }
+    .stat-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+    }
+    .stat-card:hover::before { transform: scaleX(1); }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: rgba(67,56,202,0.18); }
+    .stat-icon {
+      width: 44px; height: 44px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 14px; transition: transform 0.3s;
+    }
+    .stat-card:hover .stat-icon { transform: scale(1.15) rotate(-5deg); }
+    .si-blue  { background: var(--primary-dim); color: var(--primary); }
+    .si-teal  { background: var(--accent-dim); color: var(--accent); }
+    .si-green { background: var(--green-dim); color: var(--green); }
+    .si-amber { background: rgba(217,119,6,0.08); color: var(--amber); }
+    .si-rose  { background: rgba(225,29,72,0.07); color: var(--rose); }
+    .si-purple { background: rgba(139,92,246,0.08); color: #7C3AED; }
+    .stat-num {
+      font-family: var(--font-display); font-size: 28px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.5px;
+    }
+    .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
+
+    /* ══ PROFILE COMPLETION CARD ══ */
+    .completion-panel {
+      background: linear-gradient(135deg,rgba(67,56,202,0.04) 0%,rgba(14,165,233,0.03) 100%);
+      border: 1px solid rgba(67,56,202,0.14); border-radius: 22px; padding: 36px;
+      box-shadow: var(--shadow-sm); transition: box-shadow 0.3s;
+    }
+    .completion-panel:hover { box-shadow: 0 0 0 4px rgba(67,56,202,0.06), var(--shadow-md); }
+    .completion-layout {
+      display: grid; grid-template-columns: 1fr auto; gap: 36px; align-items: center;
+    }
+    @media (max-width: 640px) { .completion-layout { grid-template-columns: 1fr; } }
+    .completion-progress-wrap { margin: 20px 0 14px; }
+    .completion-track {
+      height: 8px; background: var(--bg-surface-muted); border-radius: 100px; overflow: hidden;
+    }
+    .completion-fill {
+      height: 100%; border-radius: 100px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 1.1s cubic-bezier(0.4,0,0.2,1);
+    }
+    .completion-meta {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 10px;
+      font-size: 13px; color: var(--text-muted);
+    }
+    .completion-level {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 100px;
+    }
+    .cl-beginner { background: rgba(225,29,72,0.08); color: var(--rose); border: 1px solid rgba(225,29,72,0.18); }
+    .cl-started  { background: rgba(217,119,6,0.08); color: var(--amber); border: 1px solid rgba(217,119,6,0.18); }
+    .cl-ready    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(5,150,105,0.18); }
+    .cl-verified { background: var(--primary-dim); color: var(--primary); border: 1px solid rgba(67,56,202,0.18); }
+    .missing-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+    .missing-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text-muted); padding: 7px 12px;
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 9px;
+    }
+    .missing-item i { color: var(--rose); font-size: 11px; }
+
+    /* Completion ring (right side) */
+    .completion-ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .ring-wrap { position: relative; width: 130px; height: 130px; }
+    #completionRingSvg { transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-num { font-family: var(--font-display); font-size: 30px; font-weight: 800; color: var(--primary); }
+    .ring-sub  { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+    /* ══ TRUST SECTION ══ */
+    .trust-panel {
+      background: linear-gradient(135deg,rgba(5,150,105,0.04) 0%,rgba(14,165,233,0.03) 100%);
+      border: 1px solid rgba(5,150,105,0.14); border-radius: 22px; padding: 36px;
+      transition: box-shadow 0.3s;
+    }
+    .trust-panel:hover { box-shadow: 0 0 0 4px rgba(5,150,105,0.06), var(--shadow-md); }
+    .trust-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    @media (max-width: 720px) { .trust-layout { grid-template-columns: 1fr; } }
+    .trust-bars { display: flex; flex-direction: column; gap: 16px; }
+    .trust-bar-row { display: flex; flex-direction: column; gap: 6px; }
+    .tbr-top { display: flex; justify-content: space-between; align-items: center; }
+    .tbr-label { font-size: 13px; font-weight: 500; color: var(--text-main); }
+    .tbr-val   { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .tbr-track { height: 6px; background: var(--bg-surface-muted); border-radius: 100px; overflow: hidden; }
+    .tbr-fill  { height: 100%; border-radius: 100px; transition: width 1.2s ease; }
+    .tbr-fill.blue  { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .tbr-fill.green { background: linear-gradient(90deg, var(--green), #34D399); }
+    .tbr-fill.amber { background: linear-gradient(90deg, var(--amber), #FCD34D); }
+
+    .trust-score-ring { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .trust-ring-wrap { position: relative; width: 150px; height: 150px; }
+    #trustRing { transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .trust-ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .trust-ring-num { font-family: var(--font-display); font-size: 34px; font-weight: 800; color: var(--green); }
+    .trust-ring-sub  { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+    /* ══ RIDE CARDS ══ */
+    .rides-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px; margin-top: 24px;
+    }
+    .ride-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 24px; position: relative; overflow: hidden;
+      transition: all 0.3s; box-shadow: var(--shadow-sm);
+    }
+    .ride-card::after {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+    }
+    .ride-card:hover::after { transform: scaleX(1); }
+    .ride-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(67,56,202,0.2); }
+
+    .rc-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 16px; gap: 12px;
+    }
+    .rc-route-line {
+      display: flex; align-items: center; gap: 10px; flex: 1;
+    }
+    .rc-city {
+      font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-main);
+    }
+    .rc-arrow-line { flex: 1; position: relative; height: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .rc-arrow-line::after { content:'→'; position:absolute; right:-3px; top:-9px; color:var(--accent); font-size:11px; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 100px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .status-badge::before { content:''; width:6px; height:6px; border-radius:50%; }
+    .status-scheduled { background: rgba(67,56,202,0.08); color: var(--primary); border: 1px solid rgba(67,56,202,0.15); }
+    .status-scheduled::before { background: var(--primary); }
+    .status-ongoing { background: rgba(217,119,6,0.08); color: var(--amber); border: 1px solid rgba(217,119,6,0.15); }
+    .status-ongoing::before { background: var(--amber); animation: pulseDot 1.4s infinite; }
+    .status-completed { background: var(--green-dim); color: var(--green); border: 1px solid rgba(5,150,105,0.18); }
+    .status-completed::before { background: var(--green); }
+    .status-cancelled { background: rgba(225,29,72,0.07); color: var(--rose); border: 1px solid rgba(225,29,72,0.14); }
+    .status-cancelled::before { background: var(--rose); }
+
+    @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .rc-meta {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+      padding: 14px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      margin: 14px 0;
+    }
+    .rc-meta-item { text-align: center; }
+    .rc-meta-val { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-main); }
+    .rc-meta-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
+
+    .rc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ══ OTP CARD ══ */
+    .otp-card {
+      background: linear-gradient(135deg, rgba(67,56,202,0.04), rgba(14,165,233,0.03));
+      border: 1px solid rgba(67,56,202,0.14); border-radius: 18px; padding: 24px;
+      transition: all 0.3s; box-shadow: var(--shadow-sm);
+    }
+    .otp-card:hover { box-shadow: var(--shadow-md); }
+    .otp-number {
+      font-family: var(--font-display); font-size: 38px; font-weight: 800;
+      letter-spacing: 6px; color: var(--primary);
+      background: var(--bg-surface); border: 2px dashed rgba(67,56,202,0.25);
+      border-radius: 14px; padding: 16px 24px;
+      display: inline-block; margin: 12px 0;
+    }
+    .boarded-yes { color: var(--green); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .boarded-no  { color: var(--rose); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    /* ══ WAITLIST / ALERT CARDS ══ */
+    .alert-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 22px; transition: all 0.3s; box-shadow: var(--shadow-sm);
+      display: flex; align-items: flex-start; gap: 16px;
+    }
+    .alert-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: rgba(67,56,202,0.2); }
+    .alert-icon-wrap {
+      width: 48px; height: 48px; border-radius: 13px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .ai-purple { background: var(--primary-dim); color: var(--primary); }
+    .ai-amber  { background: rgba(217,119,6,0.08); color: var(--amber); }
+    .ai-teal   { background: var(--accent-dim); color: var(--accent); }
+    .alert-content { flex: 1; min-width: 0; }
+    .alert-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 5px; }
+    .alert-sub   { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+    .alert-badge {
+      font-size: 11.5px; font-weight: 700;
+      background: rgba(124,58,237,0.08); color: #7C3AED;
+      border: 1px solid rgba(124,58,237,0.15); border-radius: 100px;
+      padding: 3px 10px; margin-top: 8px; display: inline-block;
+    }
+    .alert-actions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ══ FEAT CARDS (Features) ══ */
+    .feat-row {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 28px;
+    }
+    @media (max-width: 860px) { .feat-row { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 560px) { .feat-row { grid-template-columns: 1fr; } }
+    .feat-card {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 15px;
+      padding: 26px; transition: all 0.3s; box-shadow: var(--shadow-sm); overflow: hidden; position: relative;
+    }
+    .feat-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+    .feat-icon-wrap {
+      width: 52px; height: 52px; border-radius: 13px;
+      display: flex; align-items: center; justify-content: center; font-size: 21px;
+      margin-bottom: 18px; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .feat-card:hover .feat-icon-wrap { transform: scale(1.15) rotate(-6deg); }
+    .feat-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+    .feat-body  { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+    .feat-bg-icon { position: absolute; bottom: 14px; right: 14px; font-size: 28px; opacity: 0.06; color: var(--text-main); transition: opacity 0.3s, transform 0.3s; }
+    .feat-card:hover .feat-bg-icon { opacity: 0.12; transform: scale(1.15) rotate(-8deg); }
+
+    /* ══ HISTORY TABLE ══ */
+    .history-wrap {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 18px;
+      overflow: hidden; box-shadow: var(--shadow-sm); margin-top: 24px;
+    }
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .history-table thead tr { background: var(--bg-surface-muted); border-bottom: 1px solid var(--border); }
+    .history-table th { padding: 14px 18px; text-align: left; font-weight: 700; color: var(--text-main); font-family: var(--font-display); font-size: 12px; letter-spacing: 0.5px; }
+    .history-table td { padding: 14px 18px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table tr:hover td { background: var(--bg-surface-muted); color: var(--text-main); }
+
+    /* ══ LOADER ══ */
+    .loader-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 8px 16px;
+      font-size: 13px; color: var(--text-muted);
+    }
+    .loader-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: loaderPulse 1.2s ease-in-out infinite; }
+    @keyframes loaderPulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+    .empty-state {
+      text-align: center; padding: 44px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .empty-icon { font-size: 38px; opacity: 0.25; }
+    .empty-text { font-size: 14px; color: var(--text-muted); }
+
+    /* ══ RIPPLE ══ */
+    .ripple-host { position: relative; overflow: hidden; }
+    .ripple-circle {
+      position: absolute; border-radius: 50%;
+      background: rgba(67,56,202,0.16); transform: scale(0);
+      animation: rippleOut 0.55s linear; pointer-events: none;
+    }
+    @keyframes rippleOut { to { transform: scale(4); opacity: 0; } }
+
+    /* ══ LIVE BADGE ══ */
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.22);
+      border-radius: 100px; padding: 4px 11px;
+      font-size: 11px; font-weight: 700; color: #047857;
+    }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green-light); animation: pulseDot 1.8s infinite; }
+
+    /* ══ AI WIDGET ══ */
+    #aiFab {
+      position: fixed; right: 20px; bottom: 20px; z-index: 10020;
+      width: 58px; height: 58px; border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: linear-gradient(135deg,#4338CA,#0EA5E9);
+      box-shadow: 0 14px 36px rgba(67,56,202,0.3);
+      color: #fff; cursor: none;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; transition: transform .15s ease, box-shadow .15s ease;
+    }
+    #aiFab:hover { transform: translateY(-2px); box-shadow: 0 18px 46px rgba(67,56,202,0.4); }
+
+    #aiPopup {
+      position: fixed; right: 20px; bottom: 90px;
+      width: 340px; max-width: calc(100vw - 40px);
+      height: 440px; max-height: calc(100vh - 140px);
+      z-index: 10021;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(20px);
+      border-radius: 20px; border: 1.5px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      display: none; overflow: hidden; transform-origin: bottom right;
+    }
+    #aiPopup.open { display: flex; flex-direction: column; animation: aiPop .18s ease-out; }
+    @keyframes aiPop { from { transform: translateY(8px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+    #aiPopupHeader {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(67,56,202,0.08), rgba(14,165,233,0.06));
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #aiPopupHeader strong { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+    #aiPopupHeader strong i { color: var(--accent); }
+    #aiPopupClose {
+      border: 1px solid var(--border); background: var(--bg-surface);
+      color: var(--text-muted); width: 32px; height: 32px; border-radius: 10px;
+      cursor: none; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; font-size: 12px;
+    }
+    #aiPopupClose:hover { background: #FFF1F2; color: var(--rose); border-color: #FECDD3; }
+
+    #aiPopupBody { padding: 14px; overflow: auto; flex: 1; background: rgba(247,248,252,0.6); }
+    #aiSuggestions { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+    .ai-sugg {
+      border: 1px solid rgba(67,56,202,0.18); background: var(--primary-dim);
+      color: var(--primary); font-weight: 600; font-size: 12px;
+      border-radius: 999px; padding: 6px 12px; cursor: none;
+      transition: all 0.18s; font-family: var(--font-body);
+    }
+    .ai-sugg:hover { background: var(--primary); color: #fff; transform: translateY(-1px); }
+
+    #aiMessages { display: flex; flex-direction: column; gap: 10px; }
+    .ai-msg {
+      max-width: 92%; padding: 10px 13px; border-radius: 14px;
+      font-size: 13px; line-height: 1.45; border: 1px solid var(--border);
+      background: var(--bg-surface); box-shadow: var(--shadow-sm);
+    }
+    .ai-msg.user { align-self: flex-end; background: linear-gradient(135deg,rgba(67,56,202,0.12),rgba(14,165,233,0.08)); border-color: rgba(67,56,202,0.2); }
+    .ai-msg.assistant { align-self: flex-start; }
+
+    #aiPopupFooter {
+      padding: 12px 14px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; background: rgba(255,255,255,0.8);
+    }
+    #aiInput {
+      flex: 1; border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 13px; font-size: 13px; outline: none;
+      font-family: var(--font-body); color: var(--text-main); background: var(--bg-surface);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #aiInput:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+    #aiSend {
+      border: 0; border-radius: 12px; padding: 10px 14px;
+      background: linear-gradient(135deg,#4338CA,#0EA5E9);
+      color: #fff; font-weight: 700; cursor: none;
+      box-shadow: 0 4px 14px rgba(67,56,202,0.3); transition: all 0.2s;
+      font-family: var(--font-body); font-size: 13px;
+    }
+    #aiSend:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(67,56,202,0.4); }
+
+    /* ══ FOOTER ══ */
+    footer { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 56px 0 24px; }
+    .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 44px; margin-bottom: 32px; }
+    @media (max-width: 760px) { .footer-top { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .footer-top { grid-template-columns: 1fr; } }
+    .footer-logo { font-family: var(--font-display); font-size: 21px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; }
+    .footer-logo span { color: var(--primary); }
+    .footer-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; max-width: 255px; }
+    .footer-col-title { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-main); margin-bottom: 13px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .footer-links a { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color 0.2s, padding-left 0.2s; }
+    .footer-links a:hover { color: var(--primary); padding-left: 4px; }
+    .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+
+    .dev-credit { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 22px 0; text-align: center; }
+    .dev-credit-inner { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text-muted); font-family: var(--font-body); }
+    .dev-name { font-family: var(--font-display); font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .dev-heart { color: #E11D48; animation: heartbeat 1.5s ease-in-out infinite; display: inline-block; }
+    @keyframes heartbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.3)} }
+
+    /* ══ PWA INSTALL ══ */
+    #installBtn {
+      display: none; position: fixed; right: 20px; bottom: 90px; z-index: 9999;
+      padding: 12px 18px; border: none; border-radius: 14px;
+      background: var(--primary); color: #fff; font-weight: 700;
+      font-family: var(--font-body); font-size: 14px;
+      box-shadow: 0 6px 18px rgba(67,56,202,0.35); cursor: none;
+    }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width: 860px) {
+      nav { padding: 14px 20px; }
+      nav.scrolled { padding: 10px 20px; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 580px) {
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .rides-grid { grid-template-columns: 1fr; }
+      #aiPopup { width: calc(100vw - 32px); right: 16px; bottom: 84px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* ══ BADGE ══ */
+    .badge-verified {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--green-dim); color: var(--green);
+      border: 1px solid rgba(5,150,105,0.2); border-radius: 100px;
+      font-size: 11.5px; font-weight: 700; padding: 4px 11px;
+    }
+    .badge-code {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--primary-dim); color: var(--primary);
+      border: 1px solid rgba(67,56,202,0.15); border-radius: 7px;
+      font-size: 12px; font-weight: 700; padding: 4px 10px;
+      font-family: var(--font-display);
+    }
+
+    /* ══ SECTION HEADER ROW ══ */
+    .section-header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      flex-wrap: wrap; gap: 14px; margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CURSOR -->
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+
+  <!-- ORBS -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- ══ NAV ══ -->
+  <nav id="main-nav">
+    <a href="index.html" class="nav-logo-wrap" aria-label="SahaVahan Home">
+      <div class="nav-logo-icon" style="background:transparent;box-shadow:none;">
+        <img src="/images/logo.png" alt="" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;" />
+      </div>
+      <div class="nav-logo-text">Saha<span>Vahan</span></div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="ridepublish.html"><i class="fa-solid fa-paper-plane" style="font-size:11px;margin-right:5px;"></i>Publish Ride</a></li>
+      <li><a href="rides.html"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
+      <li><a href="dashboard.html" class="active"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
+      <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+    </ul>
+    <div class="nav-right">
+      <button id="aiHeaderButton" type="button"
+        style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:10px;padding:8px 15px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:none;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(67,56,202,0.28);transition:all 0.2s;"
+        aria-label="Open AI Assistant">
+        <i class="fa-solid fa-wand-magic-sparkles" style="font-size:12px;"></i> AI
+      </button>
+      <div class="nav-user-pill">
+        <div class="nav-avatar" id="nav-avatar">RK</div>
+        <span class="nav-avatar-name" id="nav-user-name">Rahul K.</span>
+      </div>
+      <button class="btn-logout ripple-host" onclick="logoutUser()">
+        <i class="fa-solid fa-right-from-bracket" style="font-size:11px;"></i> Sign out
+      </button>
+    </div>
+  </nav>
+
+  <!-- ══ DASHBOARD HERO ══ -->
+  <div class="dash-hero" style="margin-top:80px;">
+    <div class="si">
+      <div class="dash-hero-inner">
+        <div class="dash-hero-left">
+          <div class="dash-hero-eyebrow"><i class="fa-solid fa-circle-dot fa-xs"></i> My Dashboard</div>
+          <div class="dash-hero-greeting">Good to see you again,</div>
+          <div class="dash-hero-name" id="userNameDisplay">Rahul K.</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;">
+            <div class="dash-hero-code">
+              Rider Code: <strong id="userCodeDisplay">SV-984A-2026</strong>
+            </div>
+            <div class="live-badge"><div class="live-dot"></div> Active Member</div>
+          </div>
+        </div>
+        <div class="dash-hero-right">
+          <a href="ridepublish.html" class="dash-hero-quick ripple-host">
+            <div class="dhq-icon"><i class="fa-solid fa-paper-plane"></i></div>
+            <div class="dhq-label">Publish Ride</div>
+          </a>
+          <a href="rides.html" class="dash-hero-quick ripple-host">
+            <div class="dhq-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <div class="dhq-label">Find Ride</div>
+          </a>
+          <a href="profile.html" class="dash-hero-quick ripple-host">
+            <div class="dhq-icon"><i class="fa-solid fa-user-gear"></i></div>
+            <div class="dhq-label">Account</div>
+          </a>
+          <button onclick="window.location.href='admin.html'" id="adminBtn" class="dash-hero-quick ripple-host" style="display:none;background:rgba(225,29,72,0.15);border-color:rgba(225,29,72,0.3);">
+            <div class="dhq-icon" style="color:#fff;"><i class="fa-solid fa-shield"></i></div>
+            <div class="dhq-label" style="color:rgba(255,255,255,0.9);">Admin</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE CONTENT ══ -->
+  <div class="page-wrap">
+
+    <!-- ═══ STATS SECTION ═══ -->
+    <section class="dash-section">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-chart-line fa-xs"></i> Overview</div>
+            <h2 class="sh">Your ride activity</h2>
+          </div>
+        </div>
+        <div class="stats-grid reveal" id="statsContainer">
+          <div class="stat-card">
+            <div class="stat-icon si-blue"><i class="fa-solid fa-paper-plane"></i></div>
+            <div class="stat-num" id="publishedCount">0</div>
+            <div class="stat-label">Published Rides</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-teal"><i class="fa-solid fa-ticket"></i></div>
+            <div class="stat-num" id="bookedCount">0</div>
+            <div class="stat-label">Booked Rides</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-green"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+            <div class="stat-num" id="earningsToday">₹0</div>
+            <div class="stat-label">Earned Today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-amber"><i class="fa-solid fa-calendar-days"></i></div>
+            <div class="stat-num" id="earningsThisMonth">₹0</div>
+            <div class="stat-label">This Month</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-purple"><i class="fa-solid fa-coins"></i></div>
+            <div class="stat-num" id="earningsLifetime">₹0</div>
+            <div class="stat-label">Lifetime Earnings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon si-rose"><i class="fa-solid fa-wallet"></i></div>
+            <div class="stat-num" id="spent">₹0</div>
+            <div class="stat-label">Total Spent</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ PROFILE COMPLETION ═══ -->
+    <section class="dash-section">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-user-check fa-xs"></i> Profile</div>
+            <h2 class="sh">Profile completion</h2>
+            <p class="sm">A complete profile unlocks priority seat access and higher trust scores.</p>
+          </div>
+        </div>
+        <div class="completion-panel reveal">
+          <div class="completion-layout">
+            <div>
+              <div class="completion-progress-wrap">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <span id="completionLevel" style="font-size:13px;font-weight:600;color:var(--text-main);">🔴 Beginner</span>
+                  <span id="completionPercent" style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--primary);">0%</span>
+                </div>
+                <div class="completion-track">
+                  <div id="completionBar" class="completion-fill" style="width:0%;"></div>
+                </div>
+              </div>
+              <div id="missingItems" class="missing-list"></div>
+              <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <a id="completeProfileLink" href="profile.html" class="btn-primary ripple-host" style="display:none;">
+                  <i class="fa-solid fa-arrow-right"></i> Complete Profile
+                </a>
+                <a href="profile.html" class="btn-ghost ripple-host">
+                  <i class="fa-solid fa-user-gear"></i> Manage Account
+                </a>
+              </div>
+            </div>
+            <div class="completion-ring-wrap">
+              <div class="ring-wrap">
+                <svg viewBox="0 0 130 130" width="130" height="130" id="completionRingSvg">
+                  <circle cx="65" cy="65" r="55" fill="none" stroke="#DDE3EE" stroke-width="9"/>
+                  <circle id="completionRing" cx="65" cy="65" r="55" fill="none" stroke="url(#crg)" stroke-width="9"
+                    stroke-linecap="round" stroke-dasharray="345" stroke-dashoffset="345"/>
+                  <defs>
+                    <linearGradient id="crg" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#4338CA"/>
+                      <stop offset="100%" stop-color="#0EA5E9"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="ring-label">
+                  <div class="ring-num" id="completionRingNum">0%</div>
+                  <div class="ring-sub">Complete</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ TRUST SCORE ═══ -->
+    <section class="dash-section" style="background:var(--bg-surface);">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-shield-halved fa-xs"></i> Trust & Safety</div>
+            <h2 class="sh">Driver trust score</h2>
+            <p class="sm">Your reputation built from verified trips, identity checks, and community ratings.</p>
+          </div>
+        </div>
+        <div class="trust-panel reveal">
+          <div class="trust-layout">
+            <div>
+              <div class="trust-bars" id="trustDashboardBox">
+                <div class="trust-bar-row">
+                  <div class="tbr-top"><span class="tbr-label">Identity Verified</span><span class="tbr-val">—</span></div>
+                  <div class="tbr-track"><div class="tbr-fill blue" style="width:0%"></div></div>
+                </div>
+                <div class="trust-bar-row">
+                  <div class="tbr-top"><span class="tbr-label">Ride Completion</span><span class="tbr-val">—</span></div>
+                  <div class="tbr-track"><div class="tbr-fill green" style="width:0%"></div></div>
+                </div>
+                <div class="trust-bar-row">
+                  <div class="tbr-top"><span class="tbr-label">Punctuality</span><span class="tbr-val">—</span></div>
+                  <div class="tbr-track"><div class="tbr-fill amber" style="width:0%"></div></div>
+                </div>
+                <div class="trust-bar-row">
+                  <div class="tbr-top"><span class="tbr-label">Community Ratings</span><span class="tbr-val">—</span></div>
+                  <div class="tbr-track"><div class="tbr-fill blue" style="width:0%"></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="trust-score-ring">
+              <div class="trust-ring-wrap">
+                <svg viewBox="0 0 150 150" width="150" height="150">
+                  <circle cx="75" cy="75" r="63" fill="none" stroke="#DDE3EE" stroke-width="9"/>
+                  <circle id="trustRing" cx="75" cy="75" r="63" fill="none" stroke="url(#trg)" stroke-width="9"
+                    stroke-linecap="round" stroke-dasharray="396" stroke-dashoffset="396"/>
+                  <defs>
+                    <linearGradient id="trg" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#059669"/>
+                      <stop offset="100%" stop-color="#34D399"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="trust-ring-label">
+                  <div class="trust-ring-num" id="trustRingNum">—</div>
+                  <div class="trust-ring-sub">Trust Score</div>
+                </div>
+              </div>
+              <div style="text-align:center;">
+                <div class="badge-verified"><i class="fa-solid fa-check fa-xs"></i> Verified Member</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Priority seat access unlocked</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ WAITLISTED RIDES ═══ -->
+    <section class="dash-section">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-clock fa-xs"></i> Waitlist</div>
+            <h2 class="sh">Waitlisted rides</h2>
+            <p class="sm">Rides you're queued for — you'll be notified when seats open up.</p>
+          </div>
+        </div>
+        <div id="waitlistedRidesContainer" class="reveal">
+          <div class="loader-pill"><div class="loader-dot"></div> Loading waitlisted rides…</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ ROUTE ALERTS ═══ -->
+    <section class="dash-section" style="background:var(--bg-surface);">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-bell fa-xs"></i> Route Alerts</div>
+            <h2 class="sh">My route alerts</h2>
+            <p class="sm">Get notified when new rides are published on your saved corridors.</p>
+          </div>
+        </div>
+        <div id="routeAlerts" class="reveal">
+          <div class="loader-pill"><div class="loader-dot"></div> Loading route alerts…</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ PUBLISHED RIDES ═══ -->
+    <section class="dash-section">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-paper-plane fa-xs"></i> As Driver</div>
+            <h2 class="sh">Published rides</h2>
+            <p class="sm">Rides you've shared on the platform for co-passengers to book.</p>
+          </div>
+          <a href="ridepublish.html" class="btn-primary ripple-host reveal">
+            <i class="fa-solid fa-plus"></i> Add New Ride
+          </a>
+        </div>
+        <div id="publishedRidesContainer" class="reveal">
+          <div class="loader-pill"><div class="loader-dot"></div> Loading published rides…</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ BOOKED RIDES ═══ -->
+    <section class="dash-section" style="background:var(--bg-surface);">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-ticket fa-xs"></i> As Passenger</div>
+            <h2 class="sh">Booked rides</h2>
+            <p class="sm">Rides you've reserved as a co-passenger.</p>
+          </div>
+          <a href="rides.html" class="btn-ghost ripple-host reveal">
+            <i class="fa-solid fa-magnifying-glass"></i> Find More Rides
+          </a>
+        </div>
+        <div id="bookedRidesContainer" class="reveal">
+          <div class="loader-pill"><div class="loader-dot"></div> Loading booked rides…</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ BOARDING OTP ═══ -->
+    <section class="dash-section">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-qrcode fa-xs"></i> Boarding</div>
+            <h2 class="sh">Boarding OTP</h2>
+            <p class="sm">Show your OTP to the driver at the pickup point to confirm your seat.</p>
+          </div>
+        </div>
+        <div id="boardingOtpContainer" class="reveal">
+          <div class="loader-pill"><div class="loader-dot"></div> Loading boarding OTP…</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ DROP OTP ═══ -->
+    <section class="dash-section" style="background:var(--bg-surface);">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-flag-checkered fa-xs"></i> Drop-off</div>
+            <h2 class="sh">Drop OTP verification</h2>
+            <p class="sm">Confirm the drop-off point and complete the ride.</p>
+          </div>
+        </div>
+        <div id="dropOtpContainer" class="reveal"></div>
+      </div>
+    </section>
+
+    <div class="section-sep"></div>
+
+    <!-- ═══ RIDE HISTORY ═══ -->
+    <section class="dash-section">
+      <div class="si">
+        <div class="section-header reveal">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-clock-rotate-left fa-xs"></i> History</div>
+            <h2 class="sh">Ride history</h2>
+            <p class="sm">A record of all your past trips on SahaVahan.</p>
+          </div>
+        </div>
+        <div id="historyContainer" class="reveal">
+          <div class="loader-pill"><div class="loader-dot"></div> Loading ride history…</div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /page-wrap -->
+
+  <!-- ══ FOOTER ══ -->
+  <footer>
+    <div class="si">
+      <div class="footer-top">
+        <div>
+          <div class="footer-logo">Saha<span>Vahan</span></div>
+          <p class="footer-desc">Smart carpooling for Andhra Pradesh and beyond. Move together, save more.</p>
+        </div>
+        <div>
+          <div class="footer-col-title">Platform</div>
+          <ul class="footer-links">
+            <li><a href="rides.html">Find a Ride</a></li>
+            <li><a href="ridepublish.html">Publish a Ride</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Company</div>
+          <ul class="footer-links">
+            <li><a href="contact.html">Contact Us</a></li>
+            <li><a href="services.html">Services</a></li>
+            <li><a href="aboutus.html">About Us</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Legal</div>
+          <ul class="footer-links">
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Safety Guide</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 SahaVahan. All rights reserved.</span>
+        <div style="display:flex;gap:16px;font-size:16px;">
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-x-twitter"></i></a>
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-instagram"></i></a>
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-linkedin"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <div class="dev-credit">
+    <div class="dev-credit-inner">
+      <i class="fa-solid fa-code" style="color:var(--primary);font-size:13px;"></i>
+      Developed <span class="dev-heart">♥</span> by
+      <span class="dev-name">Venkata Jagapathi Babu K</span>
+    </div>
+  </div>
+
+  <!-- ══ AI POPUP ══ -->
+  <button id="aiFab" type="button" aria-label="Open AI Assistant">
+    <i class="fa-solid fa-wand-magic-sparkles"></i>
+  </button>
+
+  <div id="aiPopup" role="dialog" aria-modal="false" aria-label="AI Assistant">
+    <div id="aiPopupHeader">
+      <strong><i class="fa-solid fa-wand-magic-sparkles"></i> Ride Availability Assistant</strong>
+      <button id="aiPopupClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="aiPopupBody">
+      <div id="aiSuggestions" aria-label="Suggested questions">
+        <div class="ai-sugg" data-prompt="Show available rides from Vijayawada to Hyderabad">Vijayawada → Hyderabad</div>
+        <div class="ai-sugg" data-prompt="Show available rides from Guntur to Vijayawada">Guntur → Vijayawada</div>
+        <div class="ai-sugg" data-prompt="Check seat availability for today">Seats today</div>
+        <div class="ai-sugg" data-prompt="What routes are most popular right now?">Trending routes</div>
+      </div>
+      <div id="aiMessages" aria-label="Chat messages"></div>
+    </div>
+    <div id="aiPopupFooter">
+      <input id="aiInput" type="text" placeholder="Ask about rides, routes, availability…" autocomplete="off" />
+      <button id="aiSend" type="button"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <!-- PWA Install -->
+  <button id="installBtn" onclick="tryInstall()">📱 Install SahaVahan</button>
+
+  <!-- Notification badge -->
+  <script src="notification-badge.js"></script>
+
+  <script>
+    // ══ AUTH + PROFILE HYDRATION ══
+    const userName  = localStorage.getItem("username");
+    const userCode  = localStorage.getItem("uniqueCode");
+
+    if (!userName || !userCode) {
+      alert("Session expired! Please login again.");
+      window.location.href = "login.html";
+    }
+
+    const initials = (userName||"").split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) || "U";
+    document.getElementById("nav-avatar").textContent       = initials;
+    document.getElementById("nav-user-name").textContent    = userName;
+    document.getElementById("userNameDisplay").textContent  = userName;
+    document.getElementById("userCodeDisplay").textContent  = userCode;
+    if(localStorage.getItem("role")==="admin") document.getElementById("adminBtn").style.display="block";
+
+    function logoutUser(){ localStorage.clear(); window.location.href = "login.html"; }
+
+    // ══ NAV SCROLL ══
+    const nav = document.getElementById("main-nav");
+    window.addEventListener("scroll", ()=>nav.classList.toggle("scrolled", scrollY>40), {passive:true});
+
+    // ══ CUSTOM CURSOR ══
+    const dot  = document.getElementById('cursor-dot');
+    const ring = document.getElementById('cursor-ring');
+    let mX=0,mY=0, dX=0,dY=0, rX=0,rY=0;
+    document.addEventListener('mousemove', e=>{ mX=e.clientX; mY=e.clientY; });
+    (function loop(){
+      dX+=(mX-dX)*.45; dY+=(mY-dY)*.45;
+      rX+=(mX-rX)*.1;  rY+=(mY-rY)*.1;
+      dot.style.left=dX+'px'; dot.style.top=dY+'px';
+      ring.style.left=rX+'px'; ring.style.top=rY+'px';
+      requestAnimationFrame(loop);
+    })();
+    document.querySelectorAll('a,button').forEach(el=>{
+      el.addEventListener('mouseenter',()=>document.body.classList.add('c-btn'));
+      el.addEventListener('mouseleave',()=>document.body.classList.remove('c-btn'));
+    });
+    document.querySelectorAll('.stat-card,.ride-card,.alert-card,.otp-card,.feat-card,.completion-panel,.trust-panel').forEach(el=>{
+      el.addEventListener('mouseenter',()=>document.body.classList.add('c-card'));
+      el.addEventListener('mouseleave',()=>document.body.classList.remove('c-card'));
+    });
+    document.querySelectorAll('input,textarea').forEach(el=>{
+      el.addEventListener('mouseenter',()=>document.body.classList.add('c-text'));
+      el.addEventListener('mouseleave',()=>document.body.classList.remove('c-text'));
+    });
+
+    // ══ RIPPLE ══
+    function addRipple(el,e){
+      const r=el.getBoundingClientRect();
+      const sz=Math.max(r.width,r.height)*1.5;
+      const sp=document.createElement('span');
+      sp.className='ripple-circle';
+      sp.style.cssText=`width:${sz}px;height:${sz}px;left:${e.clientX-r.left-sz/2}px;top:${e.clientY-r.top-sz/2}px;`;
+      el.appendChild(sp); setTimeout(()=>sp.remove(),600);
+    }
+    document.querySelectorAll('.ripple-host').forEach(el=>{
+      el.addEventListener('click',e=>addRipple(el,e));
+    });
+
+    // ══ SCROLL REVEAL ══
+    const ro = new IntersectionObserver(entries=>entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('visible'); ro.unobserve(e.target); }
+    }),{threshold:.06});
+    document.querySelectorAll('.reveal').forEach(r=>ro.observe(r));
+
+    // ══ TRUST RING OBSERVER ══
+    new IntersectionObserver(entries=>entries.forEach(e=>{
+      if(!e.isIntersecting) return;
+      // bars animate via loadTrustScore
+    }),{threshold:.3}).observe(document.querySelector('.trust-panel'));
+
+    // ══ HELPERS ══
+    function makeStatusBadge(status){
+      const s=(status||'').toLowerCase();
+      const cls = s==='ongoing'?'status-ongoing': s==='completed'?'status-completed': s==='cancelled'?'status-cancelled':'status-scheduled';
+      const label = s.charAt(0).toUpperCase()+s.slice(1)||'Scheduled';
+      return `<span class="status-badge ${cls}">${label}</span>`;
+    }
+
+    function shortPlace(place) {
+      if (!place) return "Unknown";
+      return String(place).split(",")[0].trim();
+    }
+
+    // Back-compat alias (used by other dashboard sections)
+    function shortLocation(location) {
+      return shortPlace(location);
+    }
+
+
+    function makeRideCard(r, type){
+      // Prefer published fields (source/destination). Avoid lat/lng rendering.
+      const source = r?.source ?? r?.from ?? null;
+      const dest   = r?.destination ?? r?.to ?? null;
+
+      const date   = r?.date||'';
+      const time   = r?.time||'';
+      const seats  = r?.seats||r?.availableSeats||r?.seatsAvailable||'—';
+      const price  = r?.price ? `₹${r.price}` : '—';
+      const status = r?.status||'Scheduled';
+      const isDriver = type === 'driver';
+
+      const fromShort = shortPlace(source ?? source);
+      const toShort   = shortPlace(dest ?? dest);
+
+
+      let actionsHtml = '';
+      if(isDriver){
+        actionsHtml = `
+          <a href="ridepublish.html?edit=${r?._id||''}" class="btn-ghost btn-sm ripple-host"><i class="fa-solid fa-pen-to-square"></i> Edit</a>
+          ${r?.status === "Scheduled" ? `
+            <button class="btn-primary btn-sm" onclick="openBoardingVerify('${r?._id||''}')">
+              Verify Boarding OTP
+            </button>
+          ` : ''}
+          ${r?.status === "In Progress" ? `
+            <button class="btn-success btn-sm" onclick="openDropVerify('${r?._id||''}')">
+              Verify Drop OTP
+            </button>
+          ` : ''}
+        `;
+
+      } else {
+        actionsHtml = `<button class="btn-ghost btn-sm ripple-host" onclick="openRoute('${source}','${dest}')"><i class="fa-solid fa-map-location-dot"></i> View Route</button>`;
+      }
+
+
+      return `
+        <div class="ride-card">
+          <div class="rc-header">
+            <div class="rc-route-line" style="flex-direction:column;gap:10px;align-items:flex-start;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="rc-city" style="font-size:15px;">
+                  <span style="color:var(--accent);font-weight:900;">📍</span> ${fromShort}
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="rc-arrow-line" style="display:none;"></div>
+                <span class="rc-city" style="font-size:15px;">
+                  <span style="color:var(--primary);font-weight:900;">🏁</span> ${toShort}
+                </span>
+              </div>
+            </div>
+            ${makeStatusBadge(status)}
+          </div>
+          <div class="rc-meta">
+            <div class="rc-meta-item"><div class="rc-meta-val">${date||'—'}</div><div class="rc-meta-lbl">Date</div></div>
+            <div class="rc-meta-item"><div class="rc-meta-val">${time||'—'}</div><div class="rc-meta-lbl">Time</div></div>
+            <div class="rc-meta-item"><div class="rc-meta-val">${isDriver ? seats : price}</div><div class="rc-meta-lbl">${isDriver ? 'Seats' : 'Price'}</div></div>
+          </div>
+          <div class="rc-actions">
+            ${actionsHtml}
+            ${r?.status === "Completed" && !isDriver ? `
+              <button class="btn-success btn-sm" onclick="openReviewModal('${r?.rideId || r?._id || ''}','${r?.publishedBy || ''}')">
+                ⭐ Leave Review
+              </button>
+            ` : ''
+            <button class="btn-ghost btn-sm ripple-host" onclick="openRoute('${source}','${dest}')"><i class="fa-solid fa-location-dot"></i> Google Maps</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function openRoute(source, destination){
+      if(!source||!destination) return;
+      const url=`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(source)}&destination=${encodeURIComponent(destination)}`;
+      window.open(url,"_blank");
+    }
+
+    // ══ REVIEW (Ride Feedback) ══
+    // The ⭐ Leave Review button calls openReviewModal(rideId) from makeRideCard.
+    // This minimal fix redirects to public/review.html and stores context in localStorage.
+    function openReviewModal(rideId, reviewedUser){
+      if(!rideId){
+        alert('Missing ride id for review');
+        return;
+      }
+
+      // Used by public/review.html
+      localStorage.setItem('reviewRideId', rideId);
+
+      // Backend expects: reviewedUser (username string or display name used in Review model)
+      if(reviewedUser){
+        localStorage.setItem('reviewDriver', reviewedUser);
+        localStorage.setItem('reviewedUser', reviewedUser);
+      }
+
+      window.location.href = 'review.html';
+    }
+
+
+    async function openBoardingVerify(rideId) {
+      if (!rideId) return;
+
+      try {
+        const bookingRes = await fetch(
+          `/api/otp/booking-info/${rideId}`
+        );
+
+        const bookingData = await bookingRes.json();
+
+        if (
+          !bookingData.bookings ||
+          bookingData.bookings.length === 0
+        ) {
+          return alert("No passengers booked.");
+        }
+
+        const booking = bookingData.bookings[0];
+
+        const otp = prompt(
+          `Passenger: ${booking.passengerName}\n\nEnter Boarding OTP`
+        );
+
+        if (!otp) return;
+
+        const verifyRes = await fetch(
+          "/api/otp/verify-boarding",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              rideId,
+              bookingId: booking.bookingId,
+              otp
+            })
+          }
+        );
+
+        const data = await verifyRes.json();
+
+        alert(data.message);
+
+        loadPublishedRides();
+        loadBoardingOtp();
+
+      } catch (e) {
+        console.error(e);
+        alert("Failed to verify Boarding OTP");
+      }
+    }
+
+
+
+
+
+    function emptyState(icon, msg){
+      return `<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-${icon}"></i></div><div class="empty-text">${msg}</div></div>`;
+    }
+
+    // ══ TRUST SCORE ══
+    async function loadTrustScore(){
+      try{
+        if(!userName) return;
+        const res  = await fetch(`/api/profile/trust/${encodeURIComponent(userName)}`);
+        const data = await res.json();
+        const score= Number(data?.trustScore||0);
+        const el   = document.getElementById('trustDashboardBox');
+        if(!el) return;
+
+        const id   = data?.identity ?? 100;
+        const comp = data?.completion ?? 92;
+        const punc = data?.punctuality ?? 87;
+        const rat  = data?.rating ? (data.rating/5)*100 : 96;
+        const ratLabel = data?.rating ? `${data.rating}/5` : '4.8/5';
+
+        el.innerHTML = `
+          <div class="trust-bars">
+            <div class="trust-bar-row">
+              <div class="tbr-top"><span class="tbr-label">Identity Verified</span><span class="tbr-val">${id}%</span></div>
+              <div class="tbr-track"><div class="tbr-fill blue" style="width:0%" data-target="${id}"></div></div>
+            </div>
+            <div class="trust-bar-row">
+              <div class="tbr-top"><span class="tbr-label">Ride Completion</span><span class="tbr-val">${comp}%</span></div>
+              <div class="tbr-track"><div class="tbr-fill green" style="width:0%" data-target="${comp}"></div></div>
+            </div>
+            <div class="trust-bar-row">
+              <div class="tbr-top"><span class="tbr-label">Punctuality</span><span class="tbr-val">${punc}%</span></div>
+              <div class="tbr-track"><div class="tbr-fill amber" style="width:0%" data-target="${punc}"></div></div>
+            </div>
+            <div class="trust-bar-row">
+              <div class="tbr-top"><span class="tbr-label">Community Ratings</span><span class="tbr-val">${ratLabel}</span></div>
+              <div class="tbr-track"><div class="tbr-fill blue" style="width:0%" data-target="${Math.round(rat)}"></div></div>
+            </div>
+          </div>
+        `;
+
+        // Animate trust ring
+        const dispScore = score || 94;
+        document.getElementById('trustRingNum').textContent = dispScore;
+        const ring = document.getElementById('trustRing');
+        ring.style.transition = "stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)";
+        ring.style.strokeDashoffset = 396 - (dispScore/100)*396;
+
+        // Animate bars with small delay
+        setTimeout(()=>{
+          el.querySelectorAll('.tbr-fill').forEach(b=>b.style.width=b.dataset.target+'%');
+        }, 200);
+
+      }catch(e){ console.error(e); }
+    }
+
+    // ══ PROFILE COMPLETION ══
+    async function loadProfileCompletion(){
+      try{
+        const bar       = document.getElementById('completionBar');
+        const percentEl = document.getElementById('completionPercent');
+        const missingEl = document.getElementById('missingItems');
+        const levelEl   = document.getElementById('completionLevel');
+        const linkEl    = document.getElementById('completeProfileLink');
+        const ringNumEl = document.getElementById('completionRingNum');
+        if(!bar||!percentEl||!missingEl||!levelEl||!linkEl) return;
+
+        const res  = await fetch(`/api/profile/completion/${encodeURIComponent(userName)}`);
+        const data = await res.json();
+        const percent = Math.max(0, Math.min(100, Number(data?.percentage ?? data?.percent ?? 0)));
+
+        bar.style.width = `${percent}%`;
+        percentEl.textContent = `${percent}%`;
+        if(ringNumEl) ringNumEl.textContent = `${percent}%`;
+
+        // Ring
+        const ringEl = document.getElementById('completionRing');
+        if(ringEl){
+          ringEl.style.transition = "stroke-dashoffset 1.1s cubic-bezier(0.4,0,0.2,1)";
+          ringEl.style.strokeDashoffset = 345 - (percent/100)*345;
+        }
+
+        const missing = Array.isArray(data?.missing) ? data.missing : [];
+        if(missing.length){
+          missingEl.innerHTML = missing.map(item=>`
+            <div class="missing-item">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              <span>${item}</span>
+            </div>
+          `).join('');
+          linkEl.style.display='inline-flex';
+        } else {
+          missingEl.innerHTML=`<div class="missing-item" style="border-color:rgba(5,150,105,0.2);background:var(--green-dim);"><i class="fa-solid fa-check" style="color:var(--green);"></i><span style="color:var(--green);font-weight:600;">Profile fully complete!</span></div>`;
+          linkEl.style.display='none';
+        }
+
+        let level='🔴 Beginner', levelClass='cl-beginner';
+        if(percent>=41&&percent<=70){ level='🟡 Getting Started'; levelClass='cl-started'; }
+        else if(percent>=71&&percent<=90){ level='🟢 Almost Ready'; levelClass='cl-ready'; }
+        else if(percent===100){ level='🏆 Fully Verified'; levelClass='cl-verified'; }
+
+        levelEl.innerHTML=`<span class="completion-level ${levelClass}">${level}</span>`;
+
+      }catch(e){ console.error('loadProfileCompletion error:', e); }
+    }
+
+    // ══ WAITLISTED RIDES ══
+    async function loadWaitlistedRides(){
+
+      const container = document.getElementById('waitlistedRidesContainer');
+      try{
+        const res  = await fetch(`/api/waitlist/by-user/${encodeURIComponent(userName)}`);
+        const data = await res.json();
+        const items = data?.items||[];
+        if(!items.length){ container.innerHTML = emptyState('hourglass-half','No rides in your waitlist.'); return; }
+
+        container.innerHTML = `<div class="rides-grid">` + items.map(w=>{
+          const ride=w.ride;
+          return `
+            <div class="alert-card">
+              <div class="alert-icon-wrap ai-purple"><i class="fa-solid fa-hourglass-half"></i></div>
+              <div class="alert-content">
+                <div class="alert-title">
+                  <div><span style="color:var(--accent);font-weight:900;">📍</span> ${shortLocation(ride?.source)}</div>
+                  <div><span style="color:var(--primary);font-weight:900;">🏁</span> ${shortLocation(ride?.destination)}</div>
+                </div>
+                <div class="alert-sub">${ride?.date||''} ${ride?.time?`· ${ride.time}`:''}</div>
+                <div class="alert-badge">Queue position: #${w.position}</div>
+                <div class="alert-actions">
+                  <button class="btn-primary btn-sm ripple-host" onclick="openRoute('${ride?.source||''}','${ride?.destination||''}')">
+                    <i class="fa-solid fa-map-location-dot"></i> Open Route
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('') + `</div>`;
+
+      }catch(e){
+        console.error(e);
+        container.innerHTML = `<div class="alert-card"><div class="alert-icon-wrap ai-amber"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="alert-content"><div class="alert-title">Failed to load</div><div class="alert-sub">Could not fetch waitlisted rides.</div></div></div>`;
+      }
+    }
+
+    // ══ ROUTE ALERTS ══
+    async function loadRouteAlerts(){
+      const container = document.getElementById('routeAlerts');
+      try{
+        const res  = await fetch(`/api/subscriptions/${encodeURIComponent(userName)}`);
+        const data = await res.json();
+        if(!data||!data.length){ container.innerHTML=emptyState('bell-slash','No route alerts set up yet.'); return; }
+
+        container.innerHTML = `<div class="rides-grid">` + data.map(sub=>`
+          <div class="alert-card">
+            <div class="alert-icon-wrap ai-teal"><i class="fa-solid fa-bell"></i></div>
+            <div class="alert-content">
+              <div class="alert-title">
+                <div><span style="color:var(--accent);font-weight:900;">📍</span> ${shortLocation(sub.source)}</div>
+                <div><span style="color:var(--primary);font-weight:900;">🏁</span> ${shortLocation(sub.destination)}</div>
+              </div>
+              <div class="alert-sub">You'll be notified when new rides appear on this corridor.</div>
+              <div class="alert-actions">
+                <button class="btn-danger btn-sm ripple-host" onclick="removeSubscription('${sub._id}')">
+                  <i class="fa-solid fa-bell-slash"></i> Remove Alert
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('') + `</div>`;
+
+      }catch(e){
+        console.error(e);
+        container.innerHTML = emptyState('exclamation-circle','Failed to load route alerts.');
+      }
+    }
+
+    async function removeSubscription(id){
+      if(!id) return;
+      try{ await fetch(`/api/subscriptions/${id}`,{method:'DELETE'}); await loadRouteAlerts(); }
+      catch(e){ console.error(e); alert('Failed to remove'); }
+    }
+
+    // ══ PUBLISHED RIDES ══
+    async function loadPublishedRides(){
+      const container = document.getElementById('publishedRidesContainer');
+      try{
+        const res  = await fetch(`/api/rides/user/${userCode}`);
+        const rides= await res.json();
+
+        document.getElementById('publishedCount').textContent = Array.isArray(rides) ? rides.length : 0;
+
+        if(!rides||!rides.length){ container.innerHTML=emptyState('car-side','No rides published yet.'); return; }
+        container.innerHTML = `<div class="rides-grid">${rides.map(r=>makeRideCard(r,'driver')).join('')}</div>`;
+
+      }catch(e){
+        console.error(e);
+        container.innerHTML=`<div class="rides-grid">${emptyState('exclamation-circle','Failed to load published rides.')}</div>`;
+      }
+    }
+
+    // ══ BOOKED RIDES ══
+    async function loadBookedRides(){
+      const container = document.getElementById('bookedRidesContainer');
+      try{
+        const res  = await fetch(`/api/rides/booked/${userCode}`);
+        const rides= await res.json();
+
+        document.getElementById('bookedCount').textContent = Array.isArray(rides) ? rides.length : 0;
+
+        if(!rides||!rides.length){ container.innerHTML=emptyState('ticket','No rides booked yet.'); return; }
+        container.innerHTML = `<div class="rides-grid">${rides.map(r=>makeRideCard(r,'passenger')).join('')}</div>`;
+
+      }catch(e){
+        console.error(e);
+        container.innerHTML=`<div class="rides-grid">${emptyState('exclamation-circle','Failed to load booked rides.')}</div>`;
+      }
+    }
+
+    // ══ BOARDING OTP ══
+    async function loadBoardingOtp(){
+      const container = document.getElementById('boardingOtpContainer');
+      if(!container) return;
+      try{
+        const res  = await fetch(`/api/rides/booked/${userCode}`);
+        const rides= await res.json();
+        if(!rides||!rides.length){ container.innerHTML=emptyState('qrcode','No upcoming rides.'); return; }
+
+        const activeRides = rides
+          .filter(r => String(r.status || r.rideStatus || '') !== 'Completed');
+
+        if(!activeRides.length){
+          container.innerHTML = emptyState('circle-check','No active boarding OTPs.');
+          return;
+        }
+
+        container.innerHTML = `<div class="rides-grid">` + activeRides.map(r=>{
+          const otp     = r.boardingOTP || r.boardingOTPCode || r.rideOTP || '';
+          const boarded = !!r.otpVerified;
+          return `
+            <div class="otp-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <div>
+                  <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--text-main);">
+                    <div><span style="color:var(--accent);font-weight:900;">📍</span> ${shortLocation(r.source)}</div>
+                    <div><span style="color:var(--primary);font-weight:900;">🏁</span> ${shortLocation(r.destination)}</div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-muted);margin-top:3px;">${r.date||''} ${r.time?`· ${r.time}`:''} &nbsp;·&nbsp; ${r.seatsBooked||'—'} seats</div>
+                </div>
+                ${boarded?`<span class="boarded-yes"><i class="fa-solid fa-circle-check"></i> Boarded</span>`:`<span class="boarded-no"><i class="fa-solid fa-circle-xmark"></i> Not Boarded</span>`}
+              </div>
+              <div class="otp-number">${otp||'——'}</div>
+              <div style="font-size:12.5px;color:var(--text-muted);margin-top:8px;"><i class="fa-solid fa-circle-info" style="font-size:11px;"></i> Show this OTP to your driver at pickup.</div>
+            </div>
+          `;
+        }).join('') + `</div>`;
+
+      }catch(e){
+        console.error(e);
+        container.innerHTML=emptyState('exclamation-circle','Failed to load boarding OTP.');
+      }
+    }
+
+    // ══ DROP OTP (Passenger) ══
+    // NOTE: Drop OTP section is passenger-only for displaying OTP; verification moved to driver.
+    async function loadDropOtp(){
+
+      const container = document.getElementById('dropOtpContainer');
+      if(!container) return;
+      try{
+        const res  = await fetch(`/api/rides/booked/${userCode}`);
+        const rides= await res.json();
+
+        if(!rides||!rides.length){ container.innerHTML=emptyState('flag-checkered','No rides for drop.'); return; }
+
+        const activeRides = rides
+          .filter(r => String(r.status || r.rideStatus || '') !== 'Completed');
+
+        // MVP: since /api/rides/booked currently doesn't return dropOTP or bookingId, we just show UI based on bookingId prompt.
+        // If your backend later returns bookingId & dropOTP, we can render OTP directly.
+        if(!activeRides.length){
+          container.innerHTML = emptyState('circle-check','No active drop OTPs.');
+          return;
+        }
+
+        container.innerHTML = `<div class="rides-grid">` + activeRides.map(r=>{
+        const isInProgress = r.status === 'In Progress' || r.rideStatus === 'In Progress';
+          const dropped = !!r.dropOTPVerified;
+          return `
+            <div class="otp-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <div>
+                  <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--text-main);">
+                    <div><span style="color:var(--accent);font-weight:900;">📍</span> ${shortLocation(r.source)}</div>
+                    <div><span style="color:var(--primary);font-weight:900;">🏁</span> ${shortLocation(r.destination)}</div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-muted);margin-top:3px;">${r.date||''} ${r.time?`· ${r.time}`:''} &nbsp;·&nbsp; ${r.seatsBooked||'—'} seats</div>
+                </div>
+                ${dropped?`<span class="boarded-yes"><i class="fa-solid fa-circle-check"></i> Dropped</span>`:`<span class="boarded-no"><i class="fa-solid fa-circle-xmark"></i> Not Dropped</span>`}
+              </div>
+              <div style="margin-top:8px;">
+                ${isInProgress && !dropped ? `
+                  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                    <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px;">
+                      <div style="font-size:12.5px;color:var(--text-muted);font-weight:600;letter-spacing:.2px;">
+                        Drop OTP
+                      </div>
+                      <input
+                        type="text"
+                        id="dropOtpInput_${r._id}"
+                        value="${r.dropOTP || r.dropOTPCode || ''}"
+                        readonly
+                        style="width:100%;border:1px dashed rgba(67,56,202,0.35);border-radius:12px;padding:10px 12px;outline:none;font-family:var(--font-display);font-size:16px;letter-spacing:3px;color:var(--primary);background:var(--bg-surface);"
+                      />
+                    </div>
+                    
+                  </div>
+                  <div style="font-size:12.5px;color:var(--text-muted);margin-top:8px;">
+                    <i class="fa-solid fa-circle-info" style="font-size:11px;"></i> OTP is shown automatically.
+                  </div>
+                ` : `<div style="font-size:12.5px;color:var(--text-muted);">Drop verification available when ride is In Progress.</div>`}
+              </div>
+            </div>
+          `;
+        }).join('') + `</div>`;
+
+      }catch(e){
+        console.error(e);
+        container.innerHTML=emptyState('exclamation-circle','Failed to load drop OTP.');
+      }
+    }
+
+    // Driver-side drop verification (passenger never verifies their own drop)
+    async function openDropVerify(rideId) {
+      if (!rideId) return;
+
+      try {
+        const bookingRes = await fetch(`/api/otp/booking-info/${rideId}`);
+        const bookingData = await bookingRes.json();
+
+        const bookings = bookingData?.bookings || [];
+        if (!bookings.length) {
+          alert("No passengers booked");
+          return;
+        }
+
+        const pending = bookings.filter(b => b.dropOTPVerified !== true);
+        if (!pending.length) {
+          alert("All passengers already dropped");
+          return;
+        }
+
+        const passengerList = pending
+          .map((b, i) => `${i + 1}. ${b.passengerName}`)
+          .join("\n");
+
+        const choice = prompt(
+          `Select Passenger:\n\n${passengerList}\n\nEnter passenger number`
+        );
+
+        if (!choice) return;
+
+        const booking = pending[Number(choice) - 1];
+        if (!booking) {
+          alert("Invalid passenger selection");
+          return;
+        }
+
+        const otp = prompt(
+          `Passenger: ${booking.passengerName}\n\nEnter Drop OTP`
+        );
+
+        if (!otp) return;
+
+        const verifyRes = await fetch("/api/otp/verify-drop", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            rideId,
+            bookingId: booking.bookingId,
+            otp
+          })
+        });
+
+        const result = await verifyRes.json();
+        alert(result.message || "Drop OTP verified");
+
+        loadPublishedRides();
+        loadBookedRides();
+        loadDropOtp();
+        loadBoardingOtp();
+
+      } catch (e) {
+        console.error(e);
+        alert("Failed to verify Drop OTP");
+      }
+    }
+
+
+
+
+    // ══ RIDE HISTORY ══
+    async function loadHistory(){
+      const container = document.getElementById('historyContainer');
+      container.innerHTML='<div class="loader-pill"><div class="loader-dot"></div> Loading ride history…</div>';
+      // Stub — extend when history API is available
+      setTimeout(()=>{
+        container.innerHTML=emptyState('clock-rotate-left','Your ride history will appear here.');
+      }, 800);
+    }
+
+    // ══ NOTIFICATIONS ══
+    async function loadUnreadCount(){
+      try{
+        const response = await fetch(`/api/chat/unread/${userName}`);
+        const data = await response.json();
+        const el = document.getElementById("unreadCount");
+        if(el) el.innerText = data.unread;
+      }catch(error){ console.error(error); }
+    }
+
+    async function loadNotifications(){
+      try{
+        const response = await fetch(`/api/notifications/${userName}`);
+        const data = await response.json();
+        const countEl = document.getElementById("notificationCount");
+        if(countEl) countEl.innerText = data.unreadCount||0;
+        const list = document.getElementById("notificationList");
+        if(!list) return;
+        const notifications = data.notifications||[];
+        if(!notifications.length){ list.innerHTML='<div class="notification-empty">No notifications yet.</div>'; return; }
+        list.innerHTML = notifications.map(n=>{
+          const t=n.createdAt?new Date(n.createdAt).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+          return `<div class="notification-item ${n.isRead?"":"unread"}" data-notification-id="${n._id}">
+            <div class="notification-item-title">${n.title}</div>
+            <div class="notification-item-message">${n.message}</div>
+            <div class="notification-item-time">${t}</div>
+          </div>`;
+        }).join('');
+        list.querySelectorAll(".notification-item").forEach(item=>{
+          item.addEventListener("click",async()=>{
+            const id=item.getAttribute("data-notification-id");
+            if(!id) return;
+            try{ await fetch(`/api/notifications/${id}/read`,{method:"PATCH"}); await loadNotifications(); }catch(e){ console.error(e); }
+          });
+        });
+      }catch(error){
+        console.error(error);
+        const list=document.getElementById("notificationList");
+        if(list) list.innerHTML='<div class="notification-empty">Failed to load notifications.</div>';
+      }
+    }
+
+    function toggleNotificationsDropdown(){
+      const dd=document.getElementById("notificationDropdown");
+      if(dd) dd.classList.toggle("open");
+    }
+
+    async function markAllNotificationsRead(){
+      try{ await fetch(`/api/notifications/read-all/${userName}`,{method:"PATCH"}); await loadNotifications(); }
+      catch(e){ console.error(e); }
+    }
+
+    // ══ AI WIDGET ══
+    const aiFab     = document.getElementById('aiFab');
+    const aiPopup   = document.getElementById('aiPopup');
+    const aiHdrBtn  = document.getElementById('aiHeaderButton');
+    const aiClose   = document.getElementById('aiPopupClose');
+    const aiInput   = document.getElementById('aiInput');
+    const aiSendBtn = document.getElementById('aiSend');
+    const aiMsgs    = document.getElementById('aiMessages');
+
+    function openAi() { if(aiPopup) aiPopup.classList.add('open'); }
+    function closeAi(){ if(aiPopup) aiPopup.classList.remove('open'); }
+    function toggleAi(){ if(!aiPopup) return; aiPopup.classList.toggle('open'); }
+
+    if(aiFab)    aiFab.addEventListener('click',   e=>{ e.stopPropagation(); toggleAi(); });
+    if(aiHdrBtn) aiHdrBtn.addEventListener('click', e=>{ e.stopPropagation(); openAi(); aiInput?.focus(); });
+    if(aiClose)  aiClose.addEventListener('click',  e=>{ e.stopPropagation(); closeAi(); });
+
+    document.addEventListener('click',e=>{
+      if(!aiPopup||!aiPopup.classList.contains('open')) return;
+      if(aiPopup.contains(e.target)) return;
+      if(aiFab&&aiFab.contains(e.target)) return;
+      closeAi();
+    });
+
+    function addAiMessage(text, type){
+      if(!aiMsgs) return;
+      const div=document.createElement('div');
+      div.className=`ai-msg ${type==='user'?'user':'assistant'}`;
+      div.textContent=text;
+      aiMsgs.appendChild(div);
+      aiMsgs.scrollTop=aiMsgs.scrollHeight;
+    }
+
+    async function sendAiMessage(prompt){
+      if(!prompt) return;
+      addAiMessage(prompt,'user');
+      const sender=userName||'User';
+      try{
+        addAiMessage('Thinking…','assistant');
+        const thinkEl=aiMsgs.lastChild;
+        let res;
+        try{
+        res = await fetch('/api/assistant/ask',{
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: userName, message: prompt }),
+          });
+        }catch(e){ res=null; }
+        if(res&&res.ok){
+          const data=await res.json();
+          console.log("Assistant Response:", data);
+          const answer =
+            data?.response ||
+            data?.reply ||
+            data?.message ||
+            data?.text ||
+            "No response from assistant.";
+          if(thinkEl) thinkEl.remove();
+          addAiMessage(String(answer),'assistant'); return;
+        }
+        const receiver='assistant';
+        const chatRes=await fetch('/api/chat/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender,receiver,message:prompt})});
+        if(!chatRes.ok) throw new Error('chat send failed');
+        if(thinkEl) thinkEl.remove();
+        addAiMessage('Request sent. If AI is connected, you will see the response shortly.','assistant');
+      }catch(err){
+        console.error(err);
+        if(aiMsgs?.lastChild?.textContent==='Thinking…') aiMsgs.lastChild.remove();
+        addAiMessage('Failed to contact AI service. Please try again later.','assistant');
+      }
+    }
+
+    if(aiSendBtn) aiSendBtn.addEventListener('click',async()=>{
+      const prompt=aiInput?.value?.trim(); if(!prompt) return;
+      if(aiInput) aiInput.value='';
+      await sendAiMessage(prompt);
+    });
+    if(aiInput) aiInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); aiSendBtn?.click(); } });
+    document.querySelectorAll('.ai-sugg').forEach(el=>{
+      el.addEventListener('click',async()=>{
+        const prompt=el.getAttribute('data-prompt');
+        if(aiInput) aiInput.value=prompt||'';
+        await sendAiMessage(prompt);
+        if(aiInput) aiInput.value='';
+        aiInput?.focus();
+      });
+    });
+    if(aiMsgs&&!aiMsgs.children.length){
+      addAiMessage('Ask me about available rides, routes, and seat availability.','assistant');
+    }
+
+    // ══ INIT ALL LOADERS ══
+    loadTrustScore();
+    loadWaitlistedRides();
+    loadUnreadCount();
+    loadNotifications();
+    loadProfileCompletion();
+    loadPublishedRides();
+    loadBookedRides();
+    loadBoardingOtp();
+    loadDropOtp();
+    loadHistory();
+    loadRouteAlerts();
+
+    // ══ AI HEADER BUTTON - PREVENT NAV ══
+    document.addEventListener('DOMContentLoaded',()=>{
+      const b=document.getElementById('aiHeaderButton');
+      if(b) b.addEventListener('click',e=>e.preventDefault());
+    });
+
+    // ══ PWA ══
+    if("serviceWorker" in navigator){
+      window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").then(()=>{}).catch(()=>{}));
+    }
+    let deferredPrompt;
+    window.addEventListener("beforeinstallprompt",e=>{
+      e.preventDefault(); deferredPrompt=e;
+      const btn=document.getElementById("installBtn");
+      if(btn) btn.style.display="block";
+    });
+    function tryInstall(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; document.getElementById("installBtn").style.display="none"; }).catch(()=>{});
+    }
+  </script>
+</body>
+</html>

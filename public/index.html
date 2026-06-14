@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SahaVahan — Smart Carpooling</title>
+<link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4338CA">
+  <meta name="description" content="SahaVahan — Smart carpooling platform. Book and publish rides with verified drivers, real-time updates, and trust scoring." />
+<link rel="apple-touch-icon" href="/images/logo.png" sizes="180x180">
+  <link rel="apple-touch-icon" sizes="180x180" href="/public/logo.png">
+
+
+
+  <!-- PROFESSIONAL FONTS: DM Sans (body) + Syne (display) — editorial-tech feel, not overused -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main: #F7F8FC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-muted: #F0F2F8;
+      --primary: #4338CA;
+      --primary-light: #6366F1;
+      --primary-dim: rgba(67,56,202,0.07);
+      --accent: #0EA5E9;
+      --accent-dim: rgba(14,165,233,0.08);
+      --green: #059669;
+      --green-light: #10B981;
+      --green-dim: rgba(5,150,105,0.08);
+      --amber: #D97706;
+      --amber-light: #F59E0B;
+      --rose: #E11D48;
+      --text-main: #0D1117;
+      --text-muted: #5C6B82;
+      --border: #DDE3EE;
+      --border-hover: #B8C4D8;
+      --shadow-sm: 0 2px 8px rgba(13,17,23,0.05);
+      --shadow-md: 0 10px 30px rgba(13,17,23,0.09);
+      --shadow-lg: 0 24px 52px rgba(13,17,23,0.13);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.65;
+      cursor: none;
+    }
+
+    /* ══ CUSTOM CURSOR ══ */
+    #cursor-dot {
+      position: fixed; width: 10px; height: 10px;
+      background: var(--primary); border-radius: 50%;
+      pointer-events: none; z-index: 99999;
+      transform: translate(-50%,-50%);
+      transition: background 0.18s, width 0.18s, height 0.18s, border-radius 0.18s;
+      mix-blend-mode: multiply;
+    }
+    #cursor-ring {
+      position: fixed; width: 36px; height: 36px;
+      border: 2px solid rgba(67,56,202,0.4); border-radius: 50%;
+      pointer-events: none; z-index: 99998;
+      transform: translate(-50%,-50%);
+      transition: width 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  height 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  border-color 0.2s, background 0.2s, opacity 0.2s;
+    }
+    #cursor-trail-canvas {
+      position: fixed; inset: 0; pointer-events: none; z-index: 99990;
+    }
+    body.c-btn  #cursor-dot  { width: 18px; height: 18px; background: var(--primary); }
+    body.c-btn  #cursor-ring { width: 52px; height: 52px; border-color: rgba(67,56,202,0.6); background: rgba(67,56,202,0.05); }
+    body.c-card #cursor-dot  { width: 14px; height: 14px; background: var(--accent); }
+    body.c-card #cursor-ring { width: 46px; height: 46px; border-color: rgba(14,165,233,0.45); }
+    body.c-text #cursor-dot  { width: 3px; height: 20px; border-radius: 2px; background: var(--primary); }
+    body.c-text #cursor-ring { opacity: 0; }
+
+    /* ══ ORBS ══ */
+    .orb { position: absolute; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 640px; height: 640px; background: radial-gradient(circle,rgba(67,56,202,.15) 0%,transparent 70%); top:-100px; left:-140px; }
+    .orb-2 { width: 520px; height: 520px; background: radial-gradient(circle,rgba(14,165,233,.12) 0%,transparent 70%); top:40%; right:-90px; }
+    .orb-3 { width: 420px; height: 420px; background: radial-gradient(circle,rgba(5,150,105,.09) 0%,transparent 70%); bottom:8%; left:22%; }
+
+    /* ══ NAV ══ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 20px 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+    nav.scrolled {
+      background: rgba(255,255,255,0.9); backdrop-filter: blur(22px);
+      padding: 13px 52px; border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Logo */
+    .nav-logo-wrap {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .nav-logo-wrap:hover { transform: scale(1.03); }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff; box-shadow: 0 4px 12px rgba(67,56,202,0.3);
+      flex-shrink: 0;
+    }
+    .nav-logo-text {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.3px;
+    }
+    .nav-logo-text span { color: var(--primary); }
+
+    .nav-links { display: flex; align-items: center; gap: 2px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-body); font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted); text-decoration: none;
+      padding: 8px 15px; border-radius: 8px; transition: all 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: 5px; left: 50%; right: 50%;
+      height: 2px; background: var(--primary); border-radius: 2px;
+      transition: left 0.22s, right 0.22s;
+    }
+    .nav-links a:hover { color: var(--primary); background: var(--primary-dim); }
+    .nav-links a:hover::after { left: 15px; right: 15px; }
+
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-user-pill {
+      display: flex; align-items: center; gap: 9px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 5px 14px 5px 5px;
+      font-size: 13px; color: var(--text-muted); box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .nav-user-pill:hover { border-color: var(--primary-light); box-shadow: 0 0 0 3px var(--primary-dim); }
+    .nav-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .nav-avatar-name { color: var(--text-main); font-weight: 500; }
+    .btn-logout {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 13px; font-weight: 500;
+      padding: 7px 14px; border-radius: 8px; cursor: none;
+      font-family: var(--font-body); transition: all 0.2s;
+    }
+    .btn-logout:hover { color: var(--rose); border-color: #FECDD3; background: #FFF1F2; }
+
+    /* ══ HERO ══ */
+    .hero {
+      position: relative; z-index: 1; min-height: 94vh;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+      padding: 150px 24px 60px; overflow: hidden;
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(67,56,202,0.042) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67,56,202,0.042) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 45%, black 25%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 85% 65% at 50% 45%, black 25%, transparent 100%);
+      animation: gridDrift 22s linear infinite;
+    }
+    @keyframes gridDrift { from { background-position: 0 0; } to { background-position: 56px 56px; } }
+    #hero-particles { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .hero > * { position: relative; z-index: 2; }
+
+    /* Floating feature badges — large, icon-forward, always visible */
+    .hfb {
+      position: absolute;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(14px);
+      border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 10px 16px; z-index: 10; pointer-events: none;
+      box-shadow: var(--shadow-md);
+      animation: floatY 6s ease-in-out infinite;
+    }
+    .hfb-icon {
+      width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+    .hfb-text { text-align: left; }
+    .hfb-label { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text-main); line-height: 1.2; }
+    .hfb-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .hfb-1 { left: 2%; top: 32%; animation-delay: 0s; border-color: rgba(5,150,105,0.2); }
+    .hfb-1 .hfb-icon { background: rgba(5,150,105,0.1); color: var(--green); }
+    .hfb-2 { right: 2%; top: 28%; animation-delay: -2.2s; border-color: rgba(67,56,202,0.2); }
+    .hfb-2 .hfb-icon { background: var(--primary-dim); color: var(--primary); }
+    .hfb-3 { left: 4%; bottom: 18%; animation-delay: -4s; border-color: rgba(14,165,233,0.2); }
+    .hfb-3 .hfb-icon { background: var(--accent-dim); color: var(--accent); }
+    .hfb-4 { right: 3%; bottom: 22%; animation-delay: -1.2s; border-color: rgba(217,119,6,0.2); }
+    .hfb-4 .hfb-icon { background: rgba(217,119,6,0.1); color: var(--amber); }
+
+    @media (max-width: 1100px) { .hfb-1, .hfb-4 { display: none; } }
+    @media (max-width: 860px)  { .hfb { display: none; } }
+
+    @keyframes floatY {
+      0%,100% { transform: translateY(0) rotate(-0.5deg); }
+      50%      { transform: translateY(-13px) rotate(0.5deg); }
+    }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--primary-dim); border: 1px solid rgba(67,56,202,0.15);
+      border-radius: 100px; padding: 6px 18px;
+      font-size: 11.5px; font-weight: 600; letter-spacing: 1.6px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 26px;
+      animation: fadeUp 0.8s ease both;
+    }
+    .hero-headline {
+      font-family: var(--font-display);
+      font-size: clamp(50px, 7.8vw, 94px);
+      font-weight: 800; line-height: 1.0; letter-spacing: -2.5px;
+      max-width: 960px; color: var(--text-main);
+      animation: fadeUp 0.8s 0.09s ease both;
+    }
+    .hl-gradient {
+      background: linear-gradient(135deg, var(--primary) 0%, #818CF8 40%, var(--accent) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      background-size: 200% 200%;
+      animation: gradientShift 5s ease infinite;
+    }
+    @keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .hl-muted { color: var(--text-muted); }
+    .hero-sub {
+      font-size: 17px; color: var(--text-muted); max-width: 540px;
+      margin: 22px auto 0; font-weight: 400; line-height: 1.7;
+      animation: fadeUp 0.8s 0.18s ease both;
+    }
+
+    .hero-weather {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: 100px;
+      padding: 7px 18px; margin-top: 20px;
+      font-size: 13px; color: var(--text-muted); font-weight: 500;
+      animation: fadeUp 0.8s 0.24s ease both;
+      box-shadow: var(--shadow-sm);
+    }
+    .hero-weather-icon { font-size: 18px; }
+
+    .search-hero {
+      margin-top: 30px;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border);
+      border-radius: 18px; padding: 8px;
+      display: flex; gap: 8px; align-items: center;
+      box-shadow: var(--shadow-md);
+      animation: fadeUp 0.8s 0.28s ease both;
+      flex-wrap: wrap;
+      max-width: 720px; width: 100%;
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+    .search-hero:focus-within {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 4px var(--primary-dim), var(--shadow-md);
+    }
+    .search-input-wrap {
+      flex: 1; min-width: 130px; position: relative; display: flex; align-items: center;
+    }
+    .search-input-icon {
+      position: absolute; left: 12px; color: var(--text-muted); font-size: 12px; pointer-events: none;
+    }
+    .search-hero input {
+      width: 100%;
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 11px; padding: 12px 14px 12px 34px;
+      font-size: 13.5px; font-family: var(--font-body); color: var(--text-main);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-hero input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+    .search-hero input::placeholder { color: var(--text-muted); }
+    .search-date-wrap { position: relative; display: flex; align-items: center; }
+    .search-date-icon { position: absolute; left: 12px; color: var(--text-muted); font-size: 11px; pointer-events: none; z-index: 1; }
+    .search-hero input[type="date"] {
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 11px; padding: 12px 14px 12px 32px;
+      font-size: 13.5px; font-family: var(--font-body); color: var(--text-main); outline: none;
+      min-width: 148px;
+    }
+
+    .btn-search {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; border: none; border-radius: 12px; cursor: none;
+      font-size: 13.5px; font-weight: 600; font-family: var(--font-body);
+      padding: 12px 26px; white-space: nowrap;
+      transition: all 0.25s; box-shadow: 0 4px 16px rgba(67,56,202,0.35);
+      display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden;
+    }
+    .btn-search:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(67,56,202,0.48); }
+    .btn-search:active { transform: translateY(0); }
+
+    .hero-stats {
+      display: flex; align-items: center; gap: 44px;
+      margin-top: 44px; animation: fadeUp 0.8s 0.36s ease both;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat .sn {
+      font-family: var(--font-display); font-size: 32px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.5px; transition: color 0.2s;
+    }
+    .hero-stat:hover .sn { color: var(--primary); }
+    .hero-stat .sl { font-size: 12.5px; color: var(--text-muted); font-weight: 500; margin-top: 3px; }
+    .stat-divider { width: 1px; height: 34px; background: var(--border); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+    section { position: relative; z-index: 1; }
+    .si { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    .section-sep { height: 1px; background: var(--border); }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 10px;
+    }
+    .sh {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3.2vw, 36px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+      color: var(--text-main);
+    }
+    .sm { font-size: 14.5px; color: var(--text-muted); max-width: 480px; margin-top: 9px; }
+    .reveal { opacity: 0; transform: translateY(22px); transition: all 0.65s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; font-size: 13.5px; font-weight: 600;
+      padding: 11px 22px; border-radius: 10px; border: none; cursor: none;
+      text-decoration: none; transition: all 0.25s; font-family: var(--font-body);
+      box-shadow: 0 4px 14px rgba(67,56,202,0.28); position: relative; overflow: hidden;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(67,56,202,0.42); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-surface); color: var(--text-main); font-size: 13.5px; font-weight: 500;
+      padding: 11px 22px; border-radius: 10px; border: 1px solid var(--border); cursor: none;
+      text-decoration: none; transition: all 0.2s; font-family: var(--font-body); box-shadow: var(--shadow-sm);
+    }
+    .btn-ghost:hover { background: var(--bg-surface-muted); border-color: var(--border-hover); transform: translateY(-1px); }
+
+    .corridors-section { padding: 48px 0 68px; }
+    .corridors-panel {
+      border: 1px solid var(--border); border-radius: 22px; overflow: hidden;
+      background: var(--bg-surface); box-shadow: var(--shadow-md);
+      transition: box-shadow 0.3s;
+    }
+    .corridors-panel:hover { box-shadow: var(--shadow-lg); }
+    .corridors-layout { display: grid; grid-template-columns: 1.1fr 0.9fr; }
+    @media (max-width: 860px) { .corridors-layout { grid-template-columns: 1fr; } }
+    .corridors-text { padding: 52px; display: flex; flex-direction: column; justify-content: center; }
+    .corridors-canvas-wrap { height: 430px; position: relative; background: #FAFBFF; border-left: 1px solid var(--border); }
+    @media (max-width: 860px) { .corridors-canvas-wrap { border-left: none; border-top: 1px solid var(--border); height: 280px; } }
+    #route-canvas { width: 100%; height: 100%; }
+    .live-badge {
+      position: absolute; top: 16px; right: 16px;
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.22);
+      border-radius: 100px; padding: 5px 12px;
+      font-size: 11px; font-weight: 700; color: #047857;
+    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green-light); animation: pulseDot 1.8s infinite; }
+    @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.6);opacity:0.5} }
+
+    /* Placeholder sections from provided CSS: keep as-is in this file for page rendering */
+    .pulse-section { padding: 56px 0; background: var(--bg-surface); }
+    .pulse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 32px; }
+    .pulse-card {
+      border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+      background: var(--bg-main); transition: all 0.3s; position: relative; overflow: hidden;
+    }
+    .pulse-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+    }
+    .pulse-card:hover::before { transform: scaleX(1); }
+    .pulse-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: rgba(67,56,202,0.2); background: #fff; }
+    .pulse-icon { width: 44px; height: 44px; border-radius: 11px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 18px; transition: transform 0.3s; }
+    .pulse-card:hover .pulse-icon { transform: scale(1.15) rotate(-5deg); }
+    .pi-blue { background: var(--primary-dim); color: var(--primary); }
+    .pi-teal { background: var(--accent-dim); color: var(--accent); }
+    .pi-green { background: var(--green-dim); color: var(--green); }
+    .pi-amber { background: rgba(217,119,6,0.08); color: var(--amber); }
+    .pulse-num { font-family: var(--font-display); font-size: 29px; font-weight: 700; color: var(--text-main); }
+    .pulse-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .pulse-delta { font-size: 12px; font-weight: 600; color: var(--green); margin-top: 6px; }
+
+    .actions-section { padding: 60px 0; }
+    .actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 32px; }
+
+    .action-card {
+      position: relative; background: var(--bg-surface); border: 1.5px solid var(--border);
+      border-radius: 20px; padding: 30px 26px 52px; cursor: none; text-decoration: none;
+      display: block; transition: all 0.32s cubic-bezier(0.34,1.4,0.64,1);
+      box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .action-card::before {
+      content:''; position:absolute; top:-60%; left:-80%; width:55%; height:220%;
+      background: linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.55) 50%,transparent 65%);
+      transform: skewX(-12deg); transition: left 0.5s ease; pointer-events: none;
+    }
+    .action-card:hover::before { left: 140%; }
+    .action-card::after {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+      background: var(--ac-color, linear-gradient(90deg,var(--primary),var(--accent)));
+      transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+    }
+    .action-card:hover::after { transform: scaleX(1); }
+    .action-card:hover { transform: translateY(-6px) scale(1.01); border-color: var(--ac-border, rgba(67,56,202,0.35)); box-shadow: var(--shadow-md); }
+
+    .action-card.teal  { --ac-color: linear-gradient(90deg,var(--accent),#38BDF8); --ac-border: rgba(14,165,233,0.35); }
+    .action-card.teal  .ac-icon-wrap { background: var(--accent-dim); }
+    .action-card.teal  .ac-icon { color: var(--accent); }
+    .action-card.green { --ac-color: linear-gradient(90deg,var(--green),#34D399); --ac-border: rgba(5,150,105,0.35); }
+    .action-card.green .ac-icon-wrap { background: var(--green-dim); }
+    .action-card.green .ac-icon { color: var(--green); }
+    .action-card.amber { --ac-color: linear-gradient(90deg,var(--amber),#FCD34D); --ac-border: rgba(217,119,6,0.35); }
+    .action-card.amber .ac-icon-wrap { background: rgba(217,119,6,0.08); }
+    .action-card.amber .ac-icon { color: var(--amber); }
+
+    .ac-icon-wrap {
+      width: 58px; height: 58px; border-radius: 15px;
+      background: var(--primary-dim);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px; flex-shrink: 0;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s;
+      position: relative;
+    }
+    .action-card:hover .ac-icon-wrap { transform: scale(1.16) rotate(-6deg); box-shadow: 0 6px 18px rgba(67,56,202,0.2); }
+    .ac-icon { font-size: 24px; color: var(--primary); }
+
+    .ac-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--primary); background: var(--primary-dim);
+      border-radius: 100px; padding: 3px 9px; margin-bottom: 12px;
+    }
+    .action-card.teal .ac-tag  { color: var(--accent);  background: var(--accent-dim); }
+    .action-card.green .ac-tag { color: var(--green);   background: var(--green-dim); }
+    .action-card.amber .ac-tag { color: var(--amber);   background: rgba(217,119,6,0.08); }
+
+    .at { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+    .ad { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+
+    .ac-arrow {
+      position: absolute; bottom: 22px; right: 22px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--primary-dim); display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--primary);
+      opacity: 0; transform: translateX(-8px) scale(0.75);
+      transition: all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .action-card.teal  .ac-arrow { background: var(--accent-dim);          color: var(--accent); }
+    .action-card.green .ac-arrow { background: var(--green-dim);            color: var(--green); }
+    .action-card.amber .ac-arrow { background: rgba(217,119,6,0.08);        color: var(--amber); }
+    .action-card:hover .ac-arrow { opacity: 1; transform: translateX(0) scale(1); }
+
+    .routes-section { padding: 56px 0; background: var(--bg-surface); }
+    .routes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(275px,1fr)); gap: 13px; margin-top: 28px; }
+    .route-card {
+      background: var(--bg-main); border: 1px solid var(--border); border-radius: 15px;
+      padding: 20px; transition: all 0.3s; cursor: none; position: relative; overflow: hidden;
+    }
+    .route-card:hover { border-color: rgba(67,56,202,0.35); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .rc-route { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .rc-city { font-family: var(--font-display); font-size: 14.5px; font-weight: 700; color: var(--text-main); }
+    .rc-line { flex: 1; height: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); position: relative; }
+    .rc-line::after { content:'→'; position:absolute; right:-3px; top:-9px; color:var(--accent); font-size:11px; }
+    .rc-meta { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 11px; }
+    .rc-price { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--primary); }
+    .rc-bookings { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .rc-badge-fire { font-size: 11px; font-weight: 700; background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.2); color: #92400E; border-radius: 6px; padding: 2px 7px; }
+
+    .trust-section { padding: 56px 0; background: var(--bg-surface); }
+    .trust-panel {
+      background: linear-gradient(135deg,rgba(67,56,202,0.04) 0%,rgba(14,165,233,0.03) 100%);
+      border: 1px solid rgba(67,56,202,0.12); border-radius: 22px; padding: 44px;
+      transition: box-shadow 0.3s;
+    }
+    .trust-panel:hover { box-shadow: 0 0 0 4px rgba(67,56,202,0.06), var(--shadow-md); }
+    .trust-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    @media (max-width: 720px) { .trust-layout { grid-template-columns: 1fr; } }
+    .trust-bars { display: flex; flex-direction: column; gap: 16px; }
+    .trust-bar-row { display: flex; flex-direction: column; gap: 6px; }
+    .tbr-top { display: flex; justify-content: space-between; align-items: center; }
+    .tbr-label { font-size: 13px; font-weight: 500; color: var(--text-main); }
+    .tbr-val { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .tbr-track { height: 6px; background: var(--bg-surface-muted); border-radius: 100px; overflow: hidden; }
+    .tbr-fill { height: 100%; border-radius: 100px; transition: width 1.2s ease; }
+    .tbr-fill.blue  { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+    .tbr-fill.green { background: linear-gradient(90deg, var(--green), #34D399); }
+    .tbr-fill.amber { background: linear-gradient(90deg, var(--amber), #FCD34D); }
+
+    .trust-score-ring { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .ring-wrap { position: relative; width: 160px; height: 160px; }
+    #trustRing { transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-num { font-family: var(--font-display); font-size: 36px; font-weight: 800; color: var(--primary); }
+    .ring-sub { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+    .features-section { padding: 60px 0; }
+    .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 15px; margin-top: 32px; }
+    @media (max-width: 860px) { .features-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } }
+    .feat-card {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 15px;
+      padding: 26px; transition: all 0.3s; position: relative; box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .feat-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+    .fn { font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; margin-bottom: 12px; position: relative; }
+    .ft { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 7px; position: relative; }
+    .fb { font-size: 13px; color: var(--text-muted); position: relative; line-height: 1.6; }
+    .fi { position: absolute; bottom: 18px; right: 18px; font-size: 26px; opacity: 0.07; color: var(--text-main); transition: opacity 0.3s, transform 0.3s; }
+    .feat-card:hover .fi { opacity: 0.14; transform: scale(1.15) rotate(-8deg); }
+
+    .profile-section { padding: 52px 0; }
+    .profile-widget {
+      background: linear-gradient(135deg,rgba(67,56,202,0.04) 0%,rgba(14,165,233,0.02) 100%);
+      border: 1px solid rgba(67,56,202,0.12); border-radius: 22px; padding: 36px;
+      display: flex; align-items: center; gap: 30px; flex-wrap: wrap;
+      transition: box-shadow 0.3s;
+    }
+    .profile-widget:hover { box-shadow: 0 0 0 4px rgba(67,56,202,0.06), var(--shadow-md); }
+    .profile-av-lg {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 22px; font-weight: 700; color: #fff;
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .profile-widget:hover .profile-av-lg { transform: scale(1.08) rotate(4deg); }
+    .profile-info { flex: 1; min-width: 200px; }
+    .profile-greeting { font-size: 13px; color: var(--text-muted); }
+    .profile-name { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+    .code-row { display: flex; align-items: center; gap: 8px; }
+    .code-label { font-size: 12px; color: var(--text-muted); }
+    .code-badge { font-size: 11px; font-weight: 700; background: var(--primary-dim); border: 1px solid rgba(67,56,202,0.15); border-radius: 6px; padding: 2px 8px; color: var(--primary); }
+    .profile-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .weather-strip {
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      background: linear-gradient(135deg,rgba(14,165,233,0.06),rgba(67,56,202,0.04));
+      border: 1px solid rgba(14,165,233,0.15); border-radius: 14px; padding: 18px 24px;
+      margin-top: 28px; transition: box-shadow 0.2s;
+    }
+    .weather-strip:hover { box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+    .weather-icon { font-size: 34px; }
+    .weather-info { flex: 1; }
+    .weather-city { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-main); }
+    .weather-temp { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--accent); }
+    .weather-desc { font-size: 12.5px; color: var(--text-muted); }
+    .weather-tip { font-size: 13px; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 15px; }
+
+    .fame-section { padding: 60px 0; }
+    .fame-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px,1fr)); gap: 13px; margin-top: 28px; }
+    .fame-card {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 26px; transition: all 0.3s; box-shadow: var(--shadow-sm); overflow: hidden; position: relative;
+    }
+    .fame-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: rgba(217,119,6,0.3); }
+    .fame-medal { font-size: 30px; margin-bottom: 12px; display: inline-block; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+    .fame-name { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+    .fame-score { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; color: var(--amber-light); }
+    .fame-rides { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+
+    .stats-section { padding: 60px 0; background: var(--bg-surface); }
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 15px; margin-top: 32px; }
+    @media (max-width: 680px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
+    .stat-card {
+      background: var(--bg-main); border: 1px solid var(--border); border-radius: 15px;
+      padding: 26px 20px; text-align: center; box-shadow: var(--shadow-sm); transition: all 0.3s;
+    }
+    .sc-num { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--primary); }
+    .sc-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-top: 5px; }
+
+    footer { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 56px 0 24px; }
+    .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 44px; margin-bottom: 32px; }
+    @media (max-width: 760px) { .footer-top { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .footer-top { grid-template-columns: 1fr; } }
+    .footer-logo { font-family: var(--font-display); font-size: 21px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; }
+    .footer-logo span { color: var(--primary); }
+    .footer-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; max-width: 255px; }
+    .footer-col-title { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-main); margin-bottom: 13px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .footer-links a { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color 0.2s, padding-left 0.2s; }
+    .footer-links a:hover { color: var(--primary); padding-left: 4px; }
+    .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+
+    .dev-credit { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 22px 0; text-align: center; }
+    .dev-credit-inner { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text-muted); font-family: var(--font-body); }
+    .dev-name { font-family: var(--font-display); font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .dev-heart { color: #E11D48; animation: heartbeat 1.5s ease-in-out infinite; display: inline-block; }
+    @keyframes heartbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.3)} }
+
+    .ripple-host { position: relative; overflow: hidden; }
+    .ripple-circle {
+      position: absolute; border-radius: 50%;
+      background: rgba(67,56,202,0.16); transform: scale(0);
+      animation: rippleOut 0.55s linear; pointer-events: none;
+    }
+    @keyframes rippleOut { to { transform: scale(4); opacity: 0; } }
+
+    #installBtn { display:none; position:fixed; right:20px; bottom:20px; z-index:9999; padding:12px 18px; border:none; border-radius:14px; background:var(--primary); color:#fff; font-weight:700; font-family:var(--font-body); font-size:14px; box-shadow:0 6px 18px rgba(67,56,202,0.35); cursor:none; }
+
+    @media (max-width: 860px) { nav{padding:14px 20px;} nav.scrolled{padding:10px 20px;} .nav-links{display:none;} }
+    @media (max-width: 580px) { .hero-stats{gap:18px;} }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:0.01ms !important; transition-duration:0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <!-- CURSOR -->
+  <canvas id="cursor-trail-canvas"></canvas>
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- NAV -->
+  <nav id="main-nav">
+    <a href="index.html" class="nav-logo-wrap" aria-label="SahaVahan Home">
+      <div class="nav-logo-icon" aria-hidden="true" style="background:transparent; box-shadow:none;">
+<img src="/images/logo.png" alt="" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;" />
+      </div>
+      <div class="nav-logo-text">Saha<span>Vahan</span></div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="ridepublish.html"><i class="fa-solid fa-paper-plane" style="font-size:11px;margin-right:5px;"></i>Publish Ride</a></li>
+      <li><a href="rides.html"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
+      <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
+      <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="nav-user-pill">
+        <div class="nav-avatar" id="nav-avatar">RK</div>
+        <span class="nav-avatar-name" id="nav-user-name">Rahul K.</span>
+      </div>
+      <button class="btn-logout" onclick="logout()"><i class="fa-solid fa-right-from-bracket" style="font-size:11px;"></i> Sign out</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <canvas id="hero-particles"></canvas>
+    <div class="hero-grid"></div>
+
+    <!-- Floating feature badges -->
+    <div class="hfb hfb-1">
+      <div class="hfb-icon"><i class="fa-solid fa-leaf"></i></div>
+      <div class="hfb-text">
+        <div class="hfb-label">4.2 t CO₂ Saved</div>
+        <div class="hfb-sub">Today across platform</div>
+      </div>
+    </div>
+    <div class="hfb hfb-2">
+      <div class="hfb-icon"><i class="fa-solid fa-car-side"></i></div>
+      <div class="hfb-text">
+        <div class="hfb-label">3,248 Seats Live</div>
+        <div class="hfb-sub">Active rides right now</div>
+      </div>
+    </div>
+    <div class="hfb hfb-3">
+      <div class="hfb-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="hfb-text">
+        <div class="hfb-label">100% Verified</div>
+        <div class="hfb-sub">ID-checked community</div>
+      </div>
+    </div>
+    <div class="hfb hfb-4">
+      <div class="hfb-icon"><i class="fa-solid fa-star"></i></div>
+      <div class="hfb-text">
+        <div class="hfb-label">4.8 ★ Rating</div>
+        <div class="hfb-sub">Average community score</div>
+      </div>
+    </div>
+
+    <div class="hero-eyebrow"><i class="fa-solid fa-circle-dot fa-xs"></i> Smart Community Carpooling</div>
+    <h1 class="hero-headline">
+      <span class="hl-gradient">Move Together.</span><br>
+      <span class="hl-muted">Save More.</span>
+    </h1>
+    <p class="hero-sub">Connect with verified co-passengers on your exact route. Split costs, cut emissions, and commute smarter every day.</p>
+
+    <div class="hero-weather" id="heroWeather">
+      <span class="hero-weather-icon">🌤</span>
+      <span id="heroWeatherText">Fetching weather…</span>
+    </div>
+
+    <div class="search-hero">
+      <div class="search-input-wrap">
+        <i class="fa-solid fa-location-dot search-input-icon"></i>
+        <input type="text" id="homeSource" placeholder="From — city or area" />
+      </div>
+      <span style="color:var(--border);font-size:18px;">→</span>
+      <div class="search-input-wrap">
+        <i class="fa-solid fa-flag-checkered search-input-icon"></i>
+        <input type="text" id="homeDestination" placeholder="To — city or area" />
+      </div>
+      <div class="search-date-wrap">
+        <i class="fa-solid fa-calendar-day search-date-icon"></i>
+        <input type="date" id="homeDate" />
+      </div>
+      <button class="btn-search ripple-host" onclick="searchRideFromHome()">
+        <i class="fa-solid fa-magnifying-glass"></i> Find Rides
+      </button>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="sn" id="homeStatRides">—</div><div class="sl">Rides Shared</div></div>
+      <div class="stat-divider"></div>
+      <div class="hero-stat"><div class="sn" id="homeStatOnTime">—</div><div class="sl">On-Time Rate</div></div>
+      <div class="stat-divider"></div>
+      <div class="hero-stat"><div class="sn" id="homeStatSavings">—</div><div class="sl">Avg. Savings/Trip</div></div>
+      <div class="stat-divider"></div>
+      <div class="hero-stat"><div class="sn" id="homeStatRating">—</div><div class="sl">Avg. Rating</div></div>
+    </div>
+
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- LIVE CORRIDORS -->
+  <section class="corridors-section">
+    <div class="si">
+      <div class="corridors-panel reveal visible">
+        <div class="corridors-layout">
+          <div class="corridors-text">
+            <div class="eyebrow"><i class="fa-solid fa-circle fa-2xs"></i> Live Corridors</div>
+            <h2 class="sh">Active transit routes, right now.</h2>
+            <p class="sm">Watch verified ride packets move across Andhra Pradesh's highway network in real time as commuters share routes.</p>
+            <div style="display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;">
+              <a href="rides.html" class="btn-primary ripple-host"><i class="fa-solid fa-map-location-dot"></i> Explore Live Rides</a>
+              <a href="ridepublish.html" class="btn-ghost ripple-host"><i class="fa-solid fa-plus"></i> Add Your Route</a>
+            </div>
+          </div>
+          <div class="corridors-canvas-wrap">
+            <canvas id="route-canvas"></canvas>
+            <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- RIDE PULSE -->
+  <section class="pulse-section">
+    <div class="si">
+      <div class="eyebrow"><i class="fa-solid fa-bolt fa-xs"></i> Ride Pulse</div>
+      <h2 class="sh">What's moving right now</h2>
+      <p class="sm">A live snapshot of platform activity updated every minute.</p>
+      <div class="pulse-grid reveal">
+        <div class="pulse-card">
+          <div class="pulse-icon pi-blue"><i class="fa-solid fa-car"></i></div>
+          <div class="pulse-num">3,248</div>
+          <div class="pulse-label">Active Ride Seats</div>
+          <div class="pulse-delta">↑ 12 in last hour</div>
+        </div>
+        <div class="pulse-card">
+          <div class="pulse-icon pi-teal"><i class="fa-solid fa-user-group"></i></div>
+          <div class="pulse-num">1,820</div>
+          <div class="pulse-label">Riders Searching Now</div>
+          <div class="pulse-delta">↑ 34 in last hour</div>
+        </div>
+        <div class="pulse-card">
+          <div class="pulse-icon pi-green"><i class="fa-solid fa-leaf"></i></div>
+          <div class="pulse-num">4.2 t</div>
+          <div class="pulse-label">CO₂ Saved Today</div>
+          <div class="pulse-delta">↑ 0.3t since morning</div>
+        </div>
+        <div class="pulse-card">
+          <div class="pulse-icon pi-amber"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+          <div class="pulse-num">₹18.4L</div>
+          <div class="pulse-label">Total Savings This Month</div>
+          <div class="pulse-delta">↑ ₹42K today</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- GET MOVING — ACTION CARDS -->
+  <section class="actions-section">
+    <div class="si">
+      <div class="eyebrow"><i class="fa-solid fa-rocket fa-xs"></i> Get Moving</div>
+      <h2 class="sh">Everything in one place.</h2>
+      <div class="actions-grid reveal">
+        <a href="ridepublish.html" class="action-card ripple-host">
+          <div class="ac-icon-wrap"><i class="fa-solid fa-paper-plane ac-icon"></i></div>
+          <span class="ac-tag"><i class="fa-solid fa-circle-dot fa-xs"></i> Driver</span>
+          <div class="at">Publish a Ride</div>
+          <div class="ad">Share your route, set your price, and split fuel costs with verified co-passengers automatically.</div>
+          <div class="ac-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+        </a>
+
+        <a href="rides.html" class="action-card teal ripple-host">
+          <div class="ac-icon-wrap"><i class="fa-solid fa-magnifying-glass ac-icon"></i></div>
+          <span class="ac-tag"><i class="fa-solid fa-circle-dot fa-xs"></i> Passenger</span>
+          <div class="at">Book a Ride</div>
+          <div class="ad">Browse verified routes matching your schedule. Filter by departure time, price, and rating.</div>
+          <div class="ac-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+        </a>
+
+        <a href="dashboard.html" class="action-card green ripple-host">
+          <div class="ac-icon-wrap"><i class="fa-solid fa-chart-line ac-icon"></i></div>
+          <span class="ac-tag"><i class="fa-solid fa-circle-dot fa-xs"></i> Analytics</span>
+          <div class="at">Dashboard</div>
+          <div class="ad">Track your trips, total savings, eco impact, and payment history in one clean view.</div>
+          <div class="ac-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+        </a>
+
+        <a href="leaderboard.html" class="action-card amber ripple-host">
+          <div class="ac-icon-wrap"><i class="fa-solid fa-trophy ac-icon"></i></div>
+          <span class="ac-tag"><i class="fa-solid fa-circle-dot fa-xs"></i> Community</span>
+          <div class="at">Leaderboard</div>
+          <div class="ad">See top-rated drivers and most active carpoolers. Earn your spot in the Hall of Fame.</div>
+          <div class="ac-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- POPULAR ROUTES -->
+  <section class="routes-section">
+    <div class="si">
+      <div class="eyebrow"><i class="fa-solid fa-fire fa-xs"></i> Popular Routes</div>
+      <h2 class="sh">Trending corridors this week</h2>
+      <p class="sm">Most-booked routes with live seat availability.</p>
+      <div class="routes-grid" id="popularRoutes"></div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- TRUST METER -->
+  <section class="trust-section">
+    <div class="si">
+      <div class="trust-panel reveal">
+        <div class="trust-layout">
+          <div>
+            <div class="eyebrow"><i class="fa-solid fa-shield-halved fa-xs"></i> Trust & Safety</div>
+            <h2 class="sh">Your safety score</h2>
+            <p class="sm" style="margin-bottom:26px;">Built from verified trips, ratings, and identity checks. A higher score unlocks priority seat access.</p>
+            <div class="trust-bars">
+              <div class="trust-bar-row">
+                <div class="tbr-top"><span class="tbr-label">Identity Verified</span><span class="tbr-val">100%</span></div>
+                <div class="tbr-track"><div class="tbr-fill blue" style="width:0%" data-target="100"></div></div>
+              </div>
+              <div class="trust-bar-row">
+                <div class="tbr-top"><span class="tbr-label">Ride Completion</span><span class="tbr-val">92%</span></div>
+                <div class="tbr-track"><div class="tbr-fill green" style="width:0%" data-target="92"></div></div>
+              </div>
+              <div class="trust-bar-row">
+                <div class="tbr-top"><span class="tbr-label">Punctuality</span><span class="tbr-val">87%</span></div>
+                <div class="tbr-track"><div class="tbr-fill amber" style="width:0%" data-target="87"></div></div>
+              </div>
+              <div class="trust-bar-row">
+                <div class="tbr-top"><span class="tbr-label">Community Ratings</span><span class="tbr-val">4.8/5</span></div>
+                <div class="tbr-track"><div class="tbr-fill blue" style="width:0%" data-target="96"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="trust-score-ring">
+            <div class="ring-wrap">
+              <svg viewBox="0 0 160 160" width="160" height="160">
+                <circle cx="80" cy="80" r="68" fill="none" stroke="#DDE3EE" stroke-width="10"/>
+                <circle id="trustRing" cx="80" cy="80" r="68" fill="none" stroke="url(#rg)" stroke-width="10"
+                  stroke-linecap="round" stroke-dasharray="427" stroke-dashoffset="427"/>
+                <defs>
+                  <linearGradient id="rg" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#4338CA"/>
+                    <stop offset="100%" stop-color="#0EA5E9"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="ring-label">
+                <div class="ring-num">94</div>
+                <div class="ring-sub">Trust Score</div>
+              </div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--green);">✓ Verified Member</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Priority seat access unlocked</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- FEATURES -->
+  <section class="features-section">
+    <div class="si">
+      <div class="eyebrow">Why SahaVahan</div>
+      <h2 class="sh">Built for everyday commuters.</h2>
+      <p class="sm">From route matching to eco tracking — every feature designed around real commuting needs.</p>
+      <div class="features-grid reveal">
+        <div class="feat-card">
+          <div class="fn">01 — MATCHING</div>
+          <div class="ft">Smart Route Matching</div>
+          <div class="fb">Spatial routing identifies optimal overlaps to pair you with the best co-passenger for your exact journey.</div>
+          <i class="fa-solid fa-route fi"></i>
+        </div>
+        <div class="feat-card">
+          <div class="fn">02 — SAFETY</div>
+          <div class="ft">Verified Community</div>
+          <div class="fb">Multi-point identity checks ensure every driver and rider has a verified profile and rating history.</div>
+          <i class="fa-solid fa-shield-halved fi"></i>
+        </div>
+        <div class="feat-card">
+          <div class="fn">03 — SAVINGS</div>
+          <div class="ft">Real Cost Savings</div>
+          <div class="fb">Automatic fare-split calculation handles the math — no awkward conversations about money.</div>
+          <i class="fa-solid fa-wallet fi"></i>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROFILE WIDGET -->
+  <section class="profile-section">
+    <div class="si">
+      <div class="profile-widget reveal" id="profile-widget">
+        <div class="profile-av-lg" id="profile-avatar-big">RK</div>
+        <div class="profile-info">
+          <div class="profile-greeting">Good to see you again,</div>
+          <div class="profile-name" id="profile-name-big">Rahul K.</div>
+          <div class="code-row">
+            <span class="code-label">Rider Code:</span>
+            <span class="code-badge" id="profile-code-big">SV-984A-2026</span>
+          </div>
+        </div>
+        <div style="margin:0 auto;">
+          <div id="weatherBox" class="weather-strip">
+            <div class="weather-icon">🌤</div>
+            <div class="weather-info">
+              <div class="weather-city">Loading weather…</div>
+              <div class="weather-temp"></div>
+              <div class="weather-desc"></div>
+            </div>
+          </div>
+        </div>
+        <div class="profile-btns">
+          <a href="dashboard.html" class="btn-primary ripple-host"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+          <a href="profile.html" class="btn-ghost ripple-host"><i class="fa-solid fa-user-gear"></i> Account</a>
+          <button class="btn-ghost ripple-host" id="adminBtn" onclick="window.location.href='admin.html'" style="display:none;"><i class="fa-solid fa-shield"></i> Admin</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- HALL OF FAME -->
+  <section class="fame-section">
+    <div class="si">
+      <div class="eyebrow"><i class="fa-solid fa-trophy fa-xs"></i> Hall of Fame</div>
+      <h2 class="sh">Top-rated members</h2>
+      <p class="sm">Drivers and riders with the highest trust scores this month.</p>
+      <div class="fame-grid" id="hallOfFame"></div>
+    </div>
+  </section>
+
+  <div class="section-sep"></div>
+
+  <!-- STATS -->
+  <section class="stats-section">
+    <div class="si">
+      <div style="text-align:center;">
+        <div class="eyebrow" style="justify-content:center;">Platform Metrics</div>
+        <h2 class="sh">Growing every day</h2>
+      </div>
+      <div class="stats-row reveal">
+        <div class="stat-card"><div class="sc-num">12K+</div><div class="sc-label">Rides Completed</div></div>
+        <div class="stat-card"><div class="sc-num">4.8★</div><div class="sc-label">Average Rating</div></div>
+        <div class="stat-card"><div class="sc-num">3,200+</div><div class="sc-label">Active Listings</div></div>
+        <div class="stat-card"><div class="sc-num">₹18L+</div><div class="sc-label">Community Savings</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="si">
+      <div class="footer-top">
+        <div>
+          <div class="footer-logo">Saha<span>Vahan</span></div>
+          <p class="footer-desc">Smart carpooling for Andhra Pradesh and beyond. Move together, save more.</p>
+        </div>
+        <div>
+          <div class="footer-col-title">Platform</div>
+          <ul class="footer-links">
+            <li><a href="rides.html">Find a Ride</a></li>
+            <li><a href="ridepublish.html">Publish a Ride</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Company</div>
+          <ul class="footer-links">
+            <li><a href="contact.html">Contact Us</a></li>
+            <li><a href="services.html">Services</a></li>
+            <li><a href="aboutus.html">About Us</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Legal</div>
+          <ul class="footer-links">
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Safety Guide</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 SahaVahan. All rights reserved.</span>
+        <div style="display:flex;gap:16px;font-size:16px;">
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-x-twitter"></i></a>
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-instagram"></i></a>
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-linkedin"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <div class="dev-credit">
+    <div class="dev-credit-inner">
+      <i class="fa-solid fa-code" style="color:var(--primary);font-size:13px;"></i>
+      Developed<span class="dev-heart"></span> by
+      <span class="dev-name">Venkata Jagapathi Babu K</span>
+    </div>
+  </div>
+
+  <button id="installBtn" onclick="tryInstall()">📱 Install App</button>
+
+  <script>
+    // Auth guard + profile hydration
+    const username = localStorage.getItem("username") || "Rahul K.";
+    const uniqueCode = localStorage.getItem("uniqueCode") || "SV-984A-2026";
+    if (!localStorage.getItem("username") || !localStorage.getItem("uniqueCode")) {
+      // do not break page for public view; only redirect if you want strict auth
+      // window.location.href = "login.html";
+    }
+
+    const initials = username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    document.getElementById("nav-avatar").textContent = initials;
+    document.getElementById("nav-user-name").textContent = username;
+    document.getElementById("profile-avatar-big").textContent = initials;
+    document.getElementById("profile-name-big").textContent = username;
+    document.getElementById("profile-code-big").textContent = uniqueCode;
+    if(localStorage.getItem("role")==="admin") document.getElementById("adminBtn").style.display="inline-flex";
+
+    function logout(){localStorage.clear();window.location.href="login.html";}
+
+    function searchRideFromHome(){
+      const s=document.getElementById("homeSource").value;
+      const d=document.getElementById("homeDestination").value;
+      const dt=document.getElementById("homeDate").value;
+      window.location.href=`rides.html?source=${encodeURIComponent(s)}&destination=${encodeURIComponent(d)}&date=${encodeURIComponent(dt)}`;
+    }
+
+    const nav=document.getElementById("main-nav");
+    window.addEventListener("scroll",()=>nav.classList.toggle("scrolled",scrollY>40),{passive:true});
+
+    // Custom cursor
+    const dot = document.getElementById('cursor-dot');
+    const ring = document.getElementById('cursor-ring');
+    let mX=0,mY=0, dX=0,dY=0, rX=0,rY=0;
+    document.addEventListener('mousemove', e => { mX=e.clientX; mY=e.clientY; });
+    (function loop() {
+      dX += (mX-dX)*0.45; dY += (mY-dY)*0.45;
+      rX += (mX-rX)*0.1;  rY += (mY-rY)*0.1;
+      dot.style.left=dX+'px'; dot.style.top=dY+'px';
+      ring.style.left=rX+'px'; ring.style.top=rY+'px';
+      requestAnimationFrame(loop);
+    })();
+
+    document.querySelectorAll('a,button,.btn-search,.btn-primary,.btn-ghost,.btn-logout').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('c-btn'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('c-btn'));
+    });
+    document.querySelectorAll('.action-card,.route-card,.fame-card,.pulse-card,.feat-card,.stat-card,.corridors-panel,.profile-widget,.trust-panel').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('c-card'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('c-card'));
+    });
+    document.querySelectorAll('input,textarea').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('c-text'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('c-text'));
+    });
+
+    // Trail canvas
+    const tc = document.getElementById('cursor-trail-canvas');
+    const tCtx = tc.getContext('2d');
+    const resize = () => { tc.width=innerWidth; tc.height=innerHeight; };
+    resize(); window.addEventListener('resize',resize,{passive:true});
+    const trail=[]; let ltX=0,ltY=0;
+    document.addEventListener('mousemove',e=>{
+      if(Math.hypot(e.clientX-ltX,e.clientY-ltY)>5){
+        trail.push({x:e.clientX,y:e.clientY,age:0});
+        if(trail.length>20) trail.shift();
+        ltX=e.clientX; ltY=e.clientY;
+      }
+    });
+    (function trailLoop(){
+      tCtx.clearRect(0,0,tc.width,tc.height);
+      if(trail.length>1){
+        tCtx.beginPath(); tCtx.moveTo(trail[0].x,trail[0].y);
+        trail.forEach((p,i)=>{ if(i>0) tCtx.lineTo(p.x,p.y); });
+        tCtx.strokeStyle='rgba(67,56,202,0.05)'; tCtx.lineWidth=2; tCtx.stroke();
+      }
+      trail.forEach(p=>{
+        p.age++;
+        const a=Math.max(0,0.28-(p.age/60));
+        if(a>0){
+          tCtx.beginPath();
+          tCtx.arc(p.x,p.y,Math.max(0,2.5-(p.age*0.08)),0,Math.PI*2);
+          tCtx.fillStyle=`rgba(67,56,202,${a})`;
+          tCtx.fill();
+        }
+      });
+      requestAnimationFrame(trailLoop);
+    })();
+
+    // Hero particles
+    (function(){
+      const c=document.getElementById('hero-particles');
+      const ctx=c.getContext('2d');
+      let W,H,pts=[];
+      const N=60;
+      const rsz=()=>{ W=c.width=c.offsetWidth; H=c.height=c.offsetHeight; };
+      for(let i=0;i<N;i++) pts.push({x:Math.random()*800,y:Math.random()*700,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*2+.5,h:Math.random()>.5?'67,56,202':'14,165,233'});
+      let mx=-9999,my=-9999;
+      document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        pts.forEach((p,i)=>{
+          pts.slice(i+1).forEach(q=>{
+            const d=Math.hypot(p.x-q.x,p.y-q.y);
+            if(d<100){
+              ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);
+              ctx.strokeStyle=`rgba(67,56,202,${0.035*(1-d/100)})`;
+              ctx.lineWidth=.8;ctx.stroke();
+            }
+          });
+          const dd=Math.hypot(p.x-mx,p.y-my);
+          if(dd<90){p.vx+=(p.x-mx)/dd*.07;p.vy+=(p.y-my)/dd*.07;}
+          p.vx*=.98;p.vy*=.98;p.x+=p.vx;p.y+=p.vy;
+          if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1;
+          ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${p.h},0.35)`;
+          ctx.fill();
+        });
+        requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize',rsz,{passive:true}); rsz(); draw();
+    })();
+
+    // Ripple
+    function addRipple(el,e){
+      const r=el.getBoundingClientRect();
+      const sz=Math.max(r.width,r.height)*1.5;
+      const sp=document.createElement('span');
+      sp.className='ripple-circle';
+      sp.style.cssText=`width:${sz}px;height:${sz}px;left:${e.clientX-r.left-sz/2}px;top:${e.clientY-r.top-sz/2}px;`;
+      el.appendChild(sp); setTimeout(()=>sp.remove(),600);
+    }
+    document.querySelectorAll('.ripple-host').forEach(el=>{
+      el.addEventListener('click',e=>addRipple(el,e));
+    });
+
+    // Scroll reveal
+    const ro=new IntersectionObserver(entries=>entries.forEach(e=>{
+      if(e.isIntersecting){e.target.classList.add('visible');ro.unobserve(e.target);}
+    }),{threshold:.06});
+    document.querySelectorAll('.reveal').forEach(r=>ro.observe(r));
+
+    // Trust ring + bars
+    new IntersectionObserver(entries=>entries.forEach(e=>{
+      if(!e.isIntersecting)return;
+      const rng=document.getElementById('trustRing');
+      rng.style.transition="stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)";
+      rng.style.strokeDashoffset=427-(94/100)*427;
+      document.querySelectorAll('.tbr-fill').forEach(b=>b.style.width=b.dataset.target+'%');
+    }),{threshold:.3}).observe(document.querySelector('.trust-panel'));
+
+    // Live corridors canvas
+    (function(){
+      const canvas=document.getElementById('route-canvas');
+      const ctx=canvas.getContext('2d');
+      let W,H,cities=[],packets=[];
+      const names=["Hyderabad","Vizag","Vijayawada","Tirupati","Kurnool","Guntur","Nellore","Ongole"];
+      function rsz(){ W=canvas.width=canvas.offsetWidth; H=canvas.height=canvas.offsetHeight; buildCities(); }
+      function buildCities(){
+        cities=[];
+        names.forEach((n,i)=>{
+          const a=(i/names.length)*Math.PI*2-Math.PI/2;
+          cities.push({x:W/2+W*.33*Math.cos(a),y:H/2+H*.36*Math.sin(a),name:n,pulse:Math.random()*Math.PI*2});
+        });
+        packets=[];
+        for(let k=0;k<8;k++) spawn();
+      }
+      function spawn(){
+        const f=Math.floor(Math.random()*cities.length);
+        let t=Math.floor(Math.random()*cities.length);
+        while(t===f) t=Math.floor(Math.random()*cities.length);
+        packets.push({from:f,to:t,t:Math.random(),speed:.003+Math.random()*.004,mode:Math.random()>.5?"p":"a"});
+      }
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        cities.forEach((c,i)=>cities.forEach((d,j)=>{if(j<=i)return;ctx.beginPath();ctx.strokeStyle="rgba(67,56,202,0.06)";ctx.lineWidth=1;ctx.moveTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.stroke();}));
+        packets.forEach(p=>{
+          const c=cities[p.from],d=cities[p.to];
+          ctx.beginPath();
+          ctx.strokeStyle=p.mode==="p"?"rgba(67,56,202,0.18)":"rgba(14,165,233,0.18)";
+          ctx.lineWidth=1.5;
+          ctx.moveTo(c.x,c.y);ctx.lineTo(d.x,d.y);
+          ctx.stroke();
+        });
+        packets.forEach(p=>{
+          p.t+=p.speed;
+          if(p.t>=1){
+            p.t=0;p.from=p.to;
+            p.to=Math.floor(Math.random()*cities.length);
+            while(p.to===p.from) p.to=Math.floor(Math.random()*cities.length);
+          }
+          const c=cities[p.from],d=cities[p.to];
+          const x=c.x+(d.x-c.x)*p.t, y=c.y+(d.y-c.y)*p.t;
+          for(let tr=1;tr<=4;tr++){
+            const tt=Math.max(0,p.t-tr*.02);
+            ctx.beginPath();
+            ctx.arc(c.x+(d.x-c.x)*tt,c.y+(d.y-c.y)*tt,2,0,Math.PI*2);
+            ctx.fillStyle=p.mode==="p"?`rgba(67,56,202,${.12-tr*.025})`:`rgba(14,165,233,${.12-tr*.025})`;
+            ctx.fill();
+          }
+          ctx.beginPath();
+          ctx.arc(x,y,4.5,0,Math.PI*2);
+          ctx.fillStyle=p.mode==="p"?"#4338CA":"#0EA5E9";
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x,y,7,0,Math.PI*2);
+          ctx.fillStyle=p.mode==="p"?"rgba(67,56,202,0.12)":"rgba(14,165,233,0.12)";
+          ctx.fill();
+        });
+        cities.forEach(c=>{
+          c.pulse+=.025;
+          const pr=8+Math.sin(c.pulse)*2.5;
+          ctx.beginPath();ctx.arc(c.x,c.y,pr,0,Math.PI*2);ctx.fillStyle="rgba(67,56,202,0.08)";ctx.fill();
+          ctx.beginPath();ctx.arc(c.x,c.y,4,0,Math.PI*2);ctx.fillStyle="#4338CA";ctx.fill();
+          ctx.beginPath();ctx.arc(c.x,c.y,6,0,Math.PI*2);ctx.strokeStyle="rgba(67,56,202,0.3)";ctx.lineWidth=1;ctx.stroke();
+          ctx.fillStyle="#1E293B";
+          ctx.font="600 10px 'DM Sans',sans-serif";
+          ctx.textAlign="center";ctx.textBaseline="top";
+          ctx.fillText(c.name,c.x,c.y+12);
+        });
+        requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize',rsz,{passive:true}); rsz(); draw();
+    })();
+
+    // Popular routes + hall of fame
+    const fallbackRoutes=[
+      {_id:{source:"Vijayawada",destination:"Hyderabad"},bookings:142,price:650},
+      {_id:{source:"Guntur",destination:"Vijayawada"},bookings:98,price:120},
+      {_id:{source:"Hyderabad",destination:"Vizag"},bookings:87,price:1450}
+    ];
+    function buildRoutes(routes){
+      const c=document.getElementById('popularRoutes');
+      c.innerHTML='';
+      (routes||[]).slice(0,6).forEach((r,i)=>{
+        const d=document.createElement('div');
+        d.className='route-card ripple-host';
+        d.onclick=()=>window.location.href=`rides.html?source=${encodeURIComponent(r._id.source)}&destination=${encodeURIComponent(r._id.destination)}`;
+        d.innerHTML=`<div class="rc-route"><span class="rc-city">${r._id.source}</span><div class="rc-line"></div><span class="rc-city">${r._id.destination}</span></div><div class="rc-meta"><div class="rc-price">₹${r.price||'—'}</div><div style="display:flex;align-items:center;gap:8px;"><div class="rc-bookings"><i class="fa-solid fa-users fa-xs"></i> ${r.bookings} bookings</div>${i<3?'<span class="rc-badge-fire">🔥 Trending</span>':''}</div></div>`;
+        c.appendChild(d);
+        d.addEventListener('click',e=>addRipple(d,e));
+      });
+    }
+    async function loadRoutes(){
+      try{
+        const res=await fetch('/api/analytics/popular-routes');
+        if(!res.ok) throw 0;
+        const d=await res.json();
+        buildRoutes(d&&d.length?d:fallbackRoutes);
+      }catch{buildRoutes(fallbackRoutes);}
+    }
+    loadRoutes();
+
+    const fallbackFame=[
+      {username:"Anand Warrier",trustScore:4.9,totalCompletedRides:84},
+      {username:"Suresh Patil",trustScore:4.8,totalCompletedRides:71},
+      {username:"Meera Joshi",trustScore:4.8,totalCompletedRides:68}
+    ];
+    function buildFame(users){
+      const c=document.getElementById('hallOfFame');
+      c.innerHTML='';
+      const medals=["🥇","🥈","🥉","🏅","🏅"];
+      (users||[]).slice(0,5).forEach((u,i)=>{
+        c.innerHTML+=`<div class="fame-card"><div class="fame-medal">${medals[i]||"🏅"}</div><div class="fame-name">${u.username}</div><div class="fame-score"><i class="fa-solid fa-star fa-xs"></i> ${u.trustScore} Trust Score</div><div class="fame-rides">${u.totalCompletedRides} rides completed</div></div>`;
+      });
+    }
+    async function loadFame(){
+      try{
+        const res=await fetch('/api/analytics/hall-of-fame');
+        if(!res.ok) throw 0;
+        const d=await res.json();
+        buildFame(d&&d.length?d:fallbackFame);
+      }catch{buildFame(fallbackFame);}
+    }
+    loadFame();
+
+    // Genuine homepage stats (no hardcoded marketing numbers)
+    async function loadHomeStats(){
+      try{
+        const res = await fetch('/api/analytics/home-stats');
+        if(!res.ok) throw new Error('home-stats failed');
+        const d = await res.json();
+
+        const setText = (id, val) => {
+          const el = document.getElementById(id);
+          if(!el) return;
+          el.textContent = (val === null || val === undefined) ? '—' : val;
+        };
+
+        // Rides Shared
+        const rides = Number(d.rides ?? 0);
+        setText('homeStatRides', rides.toLocaleString() + (rides >= 1000 ? '' : ''));
+
+        // Avg. Rating
+        const rating = Number(d.avgRating ?? 0);
+        setText('homeStatRating', (rating ? rating.toFixed(1) + '★' : '—'));
+
+        // Avg Savings per trip = communitySavings / bookings (best-effort)
+        const communitySavings = Number(d.communitySavings ?? 0);
+        const bookings = Number(d.bookings ?? 0);
+        const avgSaving = bookings > 0 ? (communitySavings / bookings) : 0;
+        const formattedSaving = avgSaving > 0 ? '₹' + Math.round(avgSaving).toLocaleString() : '—';
+        setText('homeStatSavings', formattedSaving);
+
+        // On-time rate: not currently available from backend.
+        // Show genuine completion-based proxy if you have it later.
+        setText('homeStatOnTime', '—');
+      }catch{
+        // keep placeholders; do not show fake numbers
+      }
+    }
+    loadHomeStats();
+
+
+    // Weather
+    async function loadWeather(){
+      const city="Vijayawada";
+      const box=document.getElementById('weatherBox');
+      const heroT=document.getElementById('heroWeatherText');
+      const heroW=document.getElementById('heroWeather');
+      try{
+        const res=await fetch(`/api/weather/${encodeURIComponent(city)}`);
+        if(!res.ok) throw 0;
+        const data=await res.json();
+        const desc=(data?.weather?.[0]?.description||"").toString();
+        const temp=data?.main?.temp??"--";
+        const feels=data?.main?.feels_like??"";
+        const humidity=data?.main?.humidity??"";
+        const icons={clear:"☀️",cloud:"⛅",rain:"🌧",drizzle:"🌦",thunder:"⛈",mist:"🌫",snow:"❄️"};
+        const iconKey=Object.keys(icons).find(k=>desc.toLowerCase().includes(k))||"clear";
+        const ico=icons[iconKey];
+        const name=data?.name||city;
+
+        if(heroT) heroT.innerHTML=`<span class="hero-weather-temp">${temp}°C</span> &nbsp;·&nbsp; ${name} &nbsp;·&nbsp; ${desc}`;
+        if(heroW) heroW.querySelector('.hero-weather-icon').textContent=ico;
+
+        box.innerHTML=`<div class="weather-icon">${ico}</div><div class="weather-info"><div class="weather-city">${name}</div><div class="weather-temp">${temp}°C</div><div class="weather-desc">${desc}${feels?` · Feels ${feels}°C`:''}${humidity?` · ${humidity}% humidity`:''}</div></div><div class="weather-tip">${desc.toLowerCase().includes("rain")?"🌧 Rain expected — carpool is cheaper than a cab!":"✅ Perfect day to share a ride."}</div>`;
+      }catch{
+        if(heroT) heroT.textContent="Weather unavailable";
+        box.innerHTML=`<div class="weather-icon">🌤</div><div class="weather-info"><div class="weather-city">${city}</div><div class="weather-desc">Weather unavailable</div></div>`;
+      }
+    }
+    loadWeather();
+
+    // PWA
+    if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+    let deferredPrompt;
+    window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;document.getElementById("installBtn").style.display="block"; document.getElementById("installBtn").style.right="18px"; document.getElementById("installBtn").style.bottom="88px";});
+    function tryInstall(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(()=>{deferredPrompt=null;document.getElementById("installBtn").style.display="none";}).catch(()=>{});
+    }
+  </script>
+
+  <!-- AI + Notification (shared widgets) -->
+  <button type="button" id="aiLauncher" class="ai-launcher" aria-label="Open AI Assistant" aria-expanded="false">
+    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+    <span>AI</span>
+  </button>
+
+  <div id="aiWidget" class="ai-widget" role="dialog" aria-label="AI ride assistant" aria-hidden="true">
+    <div class="ai-widget-header">
+      <div class="ai-widget-title">
+        <span class="ai-widget-badge"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> AI</span>
+        <span class="ai-widget-heading">Ride Availability Assistant</span>
+      </div>
+      <button type="button" id="aiWidgetClose" class="ai-widget-close" aria-label="Close AI assistant">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="ai-widget-body" id="aiWidgetMessages"></div>
+
+    <div class="ai-widget-chips" aria-label="Quick prompts">
+      <button type="button" class="ai-chip" data-prompt="Find rides for my route">Find rides</button>
+      <button type="button" class="ai-chip" data-prompt="What's available today?">Available today</button>
+      <button type="button" class="ai-chip" data-prompt="Price for route">Price</button>
+      <button type="button" class="ai-chip" data-prompt="Show nearest pickup rides">Nearest pickup</button>
+    </div>
+
+    <form class="ai-widget-input" id="aiWidgetForm">
+      <input id="aiWidgetInput" type="text" placeholder="Ask about ride availability..." autocomplete="off" />
+      <button type="submit" id="aiWidgetSend" class="ai-widget-send" aria-label="Send">
+        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+      </button>
+    </form>
+  </div>
+
+  <style>
+    /* AI widget (homepage) */
+    .ai-launcher{
+      position: fixed;
+      right: 18px;
+      bottom: 18px; /* keep AI launcher near bottom, panel is higher */
+      z-index: 10000;
+      display: inline-flex;
+      pointer-events: auto;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #4338CA, #0EA5E9);
+      color: #fff;
+      font-weight: 900;
+      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 12px 34px rgba(67,56,202,0.28);
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .ai-launcher:hover{ transform: translateY(-2px); box-shadow: 0 18px 46px rgba(67,56,202,0.34); }
+    .ai-launcher i{ font-size: 16px; }
+    .ai-launcher span{ font-size: 13px; }
+
+    .ai-widget{
+      position: fixed;
+      right: 18px;
+      bottom: 78px;
+      width: 340px;
+      max-width: calc(100vw - 36px);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(221,227,238,0.95);
+      border-radius: 18px;
+      box-shadow: 0 18px 52px rgba(13,17,23,0.18);
+      overflow: hidden;
+      z-index: 10000;
+      display: none;
+      transform-origin: bottom right;
+      animation: aiPop .18s ease-out;
+    }
+    @keyframes aiPop{ from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+    .ai-widget[data-open="true"]{ display: block; }
+
+    .ai-widget-header{
+      padding: 12px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(221,227,238,0.9);
+      background: linear-gradient(135deg, rgba(67,56,202,0.10), rgba(14,165,233,0.06));
+    }
+    .ai-widget-title{ display:flex; flex-direction: column; gap: 4px; }
+    .ai-widget-badge{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #4338CA;
+    }
+    .ai-widget-badge i{ color: #0EA5E9; }
+    .ai-widget-heading{ font-size: 13px; font-weight: 900; color: #0D1117; }
+
+    .ai-widget-close{
+      border: none;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(221,227,238,0.95);
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .12s ease, background .12s ease;
+    }
+    .ai-widget-close:hover{ transform: scale(1.04); background: #fff; }
+
+    .ai-widget-body{
+      height: 240px;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(247,248,252,0.6);
+    }
+
+    .ai-msg{
+      max-width: 92%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(221,227,238,0.95);
+      background: #fff;
+      color: #0D1117;
+      font-size: 13px;
+      line-height: 1.45;
+      box-shadow: 0 2px 10px rgba(13,17,23,0.04);
+      white-space: pre-wrap;
+    }
+    .ai-msg.ai{ align-self: flex-start; background: rgba(255,255,255,0.95); }
+    .ai-msg.user{ align-self: flex-end; background: linear-gradient(135deg, rgba(67,56,202,0.14), rgba(14,165,233,0.10)); border-color: rgba(67,56,202,0.22); }
+
+    .ai-loading{ display:inline-flex; align-items:center; gap:10px; }
+    .ai-spinner{
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(67,56,202,0.18);
+      border-top-color: rgba(67,56,202,0.8);
+      animation: aiSpin .7s linear infinite;
+    }
+    @keyframes aiSpin{ to { transform: rotate(360deg);} }
+
+    .ai-widget-chips{
+      padding: 10px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-top: 1px solid rgba(221,227,238,0.9);
+      background: rgba(255,255,255,0.35);
+    }
+    .ai-chip{
+      border: 1px solid rgba(221,227,238,0.95);
+      background: rgba(255,255,255,0.9);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease;
+      color: #0D1117;
+    }
+    .ai-chip:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(13,17,23,0.08); }
+
+    .ai-widget-input{
+      padding: 10px 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border-top: 1px solid rgba(221,227,238,0.9);
+      background: rgba(247,248,252,0.8);
+    }
+    .ai-widget-input input{
+      flex:1;
+      border-radius: 12px;
+      border: 1px solid rgba(221,227,238,0.95);
+      background: rgba(255,255,255,0.95);
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+      font-family: var(--font-body);
+    }
+    .ai-widget-input input:focus{
+      border-color: rgba(67,56,202,0.55);
+      box-shadow: 0 0 0 4px rgba(67,56,202,0.12);
+    }
+    .ai-widget-send{
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #4338CA, #0EA5E9);
+      color: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 26px rgba(67,56,202,0.22);
+      transition: transform .12s ease;
+    }
+    .ai-widget-send:hover{ transform: translateY(-1px); }
+    .ai-widget-send i{ font-size: 16px; }
+  </style>
+
+
+  <!-- Notification bell drawer -->
+
+  <script src="notification-badge.js"></script>
+
+
+  <script>
+    // Default bell position on index page (user can move it by changing these values)
+    // - "fixed" positioning wrapper is created by notification-badge.js
+    // - we just move the wrapper after it is appended
+    // Notification bell: draggable + clamped to viewport
+    document.addEventListener('DOMContentLoaded', () => {
+      const wrap = document.querySelector('.notification-bell-wrap');
+      if (!wrap) return;
+
+      // Default placement (top-right, next to nav)
+      wrap.style.top = wrap.style.top || '54px';
+      wrap.style.right = wrap.style.right || '48px';
+
+      // Clamp + drag state
+      let dragging = false;
+      let startX = 0;
+      let startY = 0;
+      let startLeft = 0;
+      let startTop = 0;
+
+      // Use left/top for drag (convert from right/top if needed)
+      const toLeftTop = () => {
+        const rect = wrap.getBoundingClientRect();
+        wrap.style.left = rect.left + 'px';
+        wrap.style.top = rect.top + 'px';
+        wrap.style.right = 'auto';
+      };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+      // Handle: only drag from the bell element itself (so drawer click still works)
+      const handle = wrap.querySelector('#notificationBellButton') || wrap;
+
+      handle.style.cursor = 'grab';
+      handle.addEventListener('mousedown', (e) => {
+        // only left button
+        if (e.button !== 0) return;
+        dragging = true;
+        e.preventDefault();
+        toLeftTop();
+        const rect = wrap.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = rect.left;
+        startTop = rect.top;
+        handle.style.cursor = 'grabbing';
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        // Clamp within viewport (keep the whole wrapper visible)
+        const minLeft = 0;
+        const minTop = 0;
+        const maxLeft = window.innerWidth - rect.width;
+        const maxTop = window.innerHeight - rect.height;
+
+        const nextLeft = clamp(startLeft + dx, minLeft, maxLeft);
+        const nextTop = clamp(startTop + dy, minTop, maxTop);
+
+        wrap.style.left = nextLeft + 'px';
+        wrap.style.top = nextTop + 'px';
+        wrap.style.right = 'auto';
+      }, { passive: false });
+
+      window.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        handle.style.cursor = 'grab';
+
+        // Persist position
+        const rect = wrap.getBoundingClientRect();
+        localStorage.setItem('notificationBellPos', JSON.stringify({
+          left: rect.left,
+          top: rect.top,
+        }));
+      });
+
+      // Load saved position
+      const saved = localStorage.getItem('notificationBellPos');
+      if (saved) {
+        try {
+          const pos = JSON.parse(saved);
+          toLeftTop();
+          const rect = wrap.getBoundingClientRect();
+          const left = clamp(pos.left, 0, window.innerWidth - rect.width);
+          const top = clamp(pos.top, 0, window.innerHeight - rect.height);
+          wrap.style.left = left + 'px';
+          wrap.style.top = top + 'px';
+          wrap.style.right = 'auto';
+        } catch {}
+      }
+
+      window.addEventListener('resize', () => {
+        const rect = wrap.getBoundingClientRect();
+        const left = clamp(rect.left, 0, window.innerWidth - rect.width);
+        const top = clamp(rect.top, 0, window.innerHeight - rect.height);
+        wrap.style.left = left + 'px';
+        wrap.style.top = top + 'px';
+        wrap.style.right = 'auto';
+      });
+    });
+
+    // AI widget: open/close + quick prompts + ride availability lookup
+(function initAIWidget(){
+  const launcher = document.getElementById('aiLauncher');
+  const widget = document.getElementById('aiWidget');
+  const closeBtn = document.getElementById('aiWidgetClose');
+  const messagesEl = document.getElementById('aiWidgetMessages');
+  const form = document.getElementById('aiWidgetForm');
+  const input = document.getElementById('aiWidgetInput');
+  const sendBtn = document.getElementById('aiWidgetSend');
+
+  if(!launcher || !widget || !messagesEl || !form || !input) return;
+
+  const addMsg = (type, html) => {
+    const div = document.createElement('div');
+    div.className = type === 'user' ? 'ai-msg user' : 'ai-msg ai';
+    div.innerHTML = html;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  };
+
+  const setOpen = (open) => {
+    launcher.setAttribute('aria-expanded', String(open));
+    widget.setAttribute('aria-hidden', String(!open));
+    widget.dataset.open = open ? 'true' : 'false';
+    if(open) setTimeout(() => input.focus(), 50);
+  };
+
+  setOpen(false);
+  if(!messagesEl.children.length){
+    addMsg('ai', 'Ask me about available rides, routes, and seat availability.');
+  }
+
+  launcher.addEventListener('click', () => setOpen(widget.dataset.open !== 'true'));
+  closeBtn && closeBtn.addEventListener('click', () => setOpen(false));
+
+  widget.querySelectorAll('.ai-chip[data-prompt]').forEach(chip => {
+    chip.addEventListener('click', async () => {
+      const prompt = chip.getAttribute('data-prompt') || chip.textContent.trim();
+      input.value = prompt;
+      await handleSend(prompt);
+    });
+  });
+
+  // ── same logic as dashboard's sendAiMessage ──
+  async function sendAiMessage(prompt) {
+    const sender = localStorage.getItem('username') || 'User';
+    const thinkDiv = addMsg('ai', 'Thinking…');
+
+    try {
+      let res;
+      try {
+        res = await fetch('/api/assistant/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: sender, message: prompt }),
+        });
+      } catch(e) { res = null; }
+
+      if(res && res.ok){
+        const data = await res.json();
+        const answer =
+          data?.response ||
+          data?.reply    ||
+          data?.message  ||
+          data?.text     ||
+          'No response from assistant.';
+        thinkDiv.remove();
+        addMsg('ai', String(answer));
+        return;
+      }
+
+      // fallback: chat/send
+      const chatRes = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender, receiver: 'assistant', message: prompt }),
+      });
+      if(!chatRes.ok) throw new Error('chat send failed');
+      thinkDiv.remove();
+      addMsg('ai', 'Request sent. If AI is connected, you will see the response shortly.');
+    } catch(err) {
+      console.error(err);
+      thinkDiv.remove();
+      addMsg('ai', 'Failed to contact AI service. Please try again later.');
+    }
+  }
+
+  async function handleSend(text){
+    const userText = (text || '').trim();
+    if(!userText) return;
+    addMsg('user', userText);
+    input.value = '';
+    await sendAiMessage(userText);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value;
+    await handleSend(text);
+  });
+})();
+  </script>
+</body>
+</html>
+
+

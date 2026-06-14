@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Vehicle</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+      }
+
+      header {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: #fff;
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .menu {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .menu button {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .menu button:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        padding: 22px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      @media (max-width: 700px) {
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      label {
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      input[type="text"],
+      input[type="file"] {
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+
+      .row {
+        margin-top: 14px;
+      }
+
+      .row .inline {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .actions {
+        margin-top: 18px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .actions button {
+        border: none;
+        border-radius: 10px;
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .actions .save {
+        background: linear-gradient(135deg, #28a745, #218838);
+        color: #fff;
+      }
+
+      .actions .cancel {
+        background: #6c757d;
+        color: #fff;
+      }
+
+      .status {
+        margin-top: 14px;
+        font-weight: 700;
+        color: #007bff;
+      }
+
+      .preview {
+        margin-top: 14px;
+        padding: 12px;
+        border: 1px dashed #bbb;
+        border-radius: 12px;
+        background: #fafafa;
+      }
+
+      .preview img {
+        width: 160px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 10px;
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>🚗 My Vehicle</h1>
+      <div class="menu">
+        <button type="button" onclick="goToProfile()">Profile</button>
+        <button type="button" onclick="goToVehicle()">My Vehicle</button>
+        <button type="button" onclick="goToDashboard()">Dashboard</button>
+        <button type="button" onclick="logoutUser()">Logout</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <form id="vehicleForm">
+        <div class="form-grid">
+          <div>
+            <label for="vehicleType">Vehicle Type</label>
+            <input id="vehicleType" type="text" required />
+          </div>
+
+          <div>
+            <label for="vehicleModel">Vehicle Model</label>
+            <input id="vehicleModel" type="text" required />
+          </div>
+
+          <div>
+            <label for="vehicleNumber">Vehicle Number</label>
+            <input id="vehicleNumber" type="text" required />
+          </div>
+
+          <div>
+            <label for="vehicleColor">Vehicle Color</label>
+            <input id="vehicleColor" type="text" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="inline">
+            <input type="checkbox" id="acAvailable" />
+            <label for="acAvailable">AC Available</label>
+          </div>
+        </div>
+
+        <div class="row">
+          <label for="vehiclePhoto">Vehicle Photo</label>
+          <input id="vehiclePhoto" type="file" accept="image/*" />
+
+          <div class="preview">
+            <img id="vehiclePhotoPreview" alt="Vehicle photo preview" />
+            <div style="font-size: 13px; color: #666; margin-top: 6px;">
+              Optional. Stored under /uploads.
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="save" type="submit">Save Vehicle</button>
+          <button class="cancel" type="button" onclick="goToDashboard()">
+            Back to Dashboard
+          </button>
+        </div>
+
+        <div id="status" class="status"></div>
+      </form>
+    </div>
+
+    <script>
+      const username = localStorage.getItem("username");
+      if (!username) {
+        alert("Please login");
+        window.location.href = "login.html";
+      }
+
+      const photoInput = document.getElementById("vehiclePhoto");
+      const photoPreview = document.getElementById("vehiclePhotoPreview");
+
+      photoInput.addEventListener("change", () => {
+        const file = photoInput.files[0];
+        if (!file) {
+          photoPreview.style.display = "none";
+          photoPreview.src = "";
+          return;
+        }
+
+        const url = URL.createObjectURL(file);
+        photoPreview.src = url;
+        photoPreview.style.display = "block";
+      });
+
+      document.getElementById("vehicleForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append("username", username);
+        formData.append("vehicleType", document.getElementById("vehicleType").value.trim());
+        formData.append("vehicleModel", document.getElementById("vehicleModel").value.trim());
+        formData.append("vehicleNumber", document.getElementById("vehicleNumber").value.trim());
+        formData.append("vehicleColor", document.getElementById("vehicleColor").value.trim());
+        formData.append("acAvailable", document.getElementById("acAvailable").checked ? "true" : "false");
+
+        const file = photoInput.files[0];
+        if (file) formData.append("vehiclePhoto", file);
+
+        try {
+          document.getElementById("status").textContent = "Saving...";
+
+          const resp = await fetch("/api/vehicles/add", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await resp.json();
+
+          if (!resp.ok) throw new Error(data.message || "Failed");
+
+          document.getElementById("status").textContent = data.message || "Vehicle Saved";
+          setTimeout(() => {
+            window.location.href = "dashboard.html";
+          }, 1200);
+        } catch (err) {
+          console.error(err);
+          document.getElementById("status").textContent = err.message || "Failed To Add Vehicle";
+        }
+      });
+
+      function goToProfile() {
+        window.location.href = "profile.html";
+      }
+
+      function goToVehicle() {
+        window.location.href = "vehicle.html";
+      }
+
+      function goToDashboard() {
+        window.location.href = "dashboard.html";
+      }
+
+      function logoutUser() {
+        localStorage.clear();
+        window.location.href = "login.html";
+      }
+    </script>
+  </body>
+</html>
+

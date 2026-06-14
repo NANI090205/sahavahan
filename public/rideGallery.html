@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trip Memories - Ride Gallery</title>
+  <style>
+    :root{ --brand:#007bff; --ok:#2e7d32; --warn:#ff9800; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif; background:#f4f7fb; color:#1f2a37; }
+    header{ background:linear-gradient(135deg,var(--brand),#0056b3); color:#fff; padding:16px 18px; }
+    .container{ max-width:980px; margin:0 auto; padding:16px; }
+
+    .grid{ display:grid; grid-template-columns: 1fr; gap:14px; }
+    @media (min-width: 900px){ .grid{ grid-template-columns: 1fr 1fr; } }
+
+    .card{ background:#fff; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.06); padding:14px; }
+    .title{ font-size:18px; font-weight:800; margin:0 0 10px; }
+    .muted{ color:#6b7280; font-size:13px; line-height:1.35; }
+
+    .pill{ display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; background:#e5e7eb; color:#111827; }
+    .pill.completed{ background:rgba(46,125,50,0.12); color:var(--ok); }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+    input[type="file"]{ width:100%; padding:10px; border:1px dashed #cbd5e1; border-radius:10px; background:#f8fafc; }
+
+    button{ border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:800; }
+    .btn-primary{ background:var(--brand); color:#fff; }
+    .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
+    .btn-ghost{ background:#eef2ff; color:#3730a3; }
+
+    #statusLine{ margin-top:10px; font-size:13px; color:#374151; }
+
+    .gallery{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+    @media (max-width: 600px){ .gallery{ grid-template-columns: repeat(2, 1fr);} }
+
+    .thumb{ background:#f8fafc; border-radius:10px; overflow:hidden; border:1px solid #e5e7eb; }
+    .thumb img{ width:100%; height:160px; object-fit:cover; display:block; }
+    .thumb .meta{ padding:8px; font-size:12px; color:#374151; }
+
+    .empty{ padding:18px; border-radius:12px; background:#f8fafc; border:1px dashed #cbd5e1; color:#6b7280; text-align:center; }
+
+    .progress{ display:none; margin-top:10px; }
+    .progress .bar{ height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
+    .progress .bar > i{ display:block; width:30%; height:100%; background:linear-gradient(90deg,var(--brand),#28a745); }
+  </style>
+</head>
+<body>
+<header>
+  <h2 style="margin:0;">📸 Trip Memories</h2>
+</header>
+
+<div class="container">
+  <div class="card" style="margin-bottom:14px;">
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <div class="title">Ride Gallery</div>
+        <div class="muted">Upload and view up to 5 photos for a completed ride.</div>
+      </div>
+      <div class="row">
+        <span class="pill" id="rideStatusPill">Ride</span>
+      </div>
+    </div>
+    <div id="statusLine" class="muted">Loading…</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="title">Upload Trip Photos</div>
+      <div class="muted" style="margin-bottom:10px;">
+        Select images (max 5). Backend enforces limits and only allows uploads for <b>Completed</b> rides.
+      </div>
+
+      <input id="imagesInput" type="file" accept="image/*" multiple />
+
+      <div class="row" style="margin-top:12px;">
+        <button class="btn-primary" id="uploadBtn">Upload</button>
+        <button class="btn-ghost" id="refreshBtn" type="button">Refresh Gallery</button>
+      </div>
+
+      <div class="progress" id="progressBox">
+        <div class="muted" style="margin-bottom:6px;">Uploading…</div>
+        <div class="bar"><i></i></div>
+      </div>
+
+      <div id="uploadMsg" class="muted" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="title">Trip Gallery</div>
+      <div class="muted" style="margin-bottom:10px;">Photos are shown newest first.</div>
+      <div id="gallery" class="gallery"></div>
+      <div id="empty" class="empty" style="display:none;">No photos yet. Upload memories after completing the ride.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const apiBase = '/api';
+  const rideId = new URLSearchParams(window.location.search).get('rideId');
+  const uploadedBy = localStorage.getItem('username') || '';
+
+  const rideStatusPill = document.getElementById('rideStatusPill');
+  const statusLine = document.getElementById('statusLine');
+  const galleryEl = document.getElementById('gallery');
+  const emptyEl = document.getElementById('empty');
+
+  const imagesInput = document.getElementById('imagesInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const uploadMsg = document.getElementById('uploadMsg');
+  const progressBox = document.getElementById('progressBox');
+
+  if (!rideId) {
+    statusLine.textContent = 'Missing rideId. Open like: rideGallery.html?rideId=<id>';
+    uploadBtn.disabled = true;
+    refreshBtn.disabled = true;
+    throw new Error('Missing rideId');
+  }
+
+  function setStatus(text, variant) {
+    statusLine.textContent = text;
+    rideStatusPill.textContent = variant || 'Ride';
+    rideStatusPill.className = 'pill';
+    if (variant && /completed/i.test(variant)) rideStatusPill.classList.add('completed');
+  }
+
+  async function fetchGallery() {
+    galleryEl.innerHTML = '';
+    emptyEl.style.display = 'none';
+
+    const res = await fetch(`${apiBase}/rides/${rideId}/photos`);
+    if (!res.ok) {
+      setStatus('Failed to load gallery', 'Ride');
+      return;
+    }
+
+    const data = await res.json();
+    const photos = data.photos || [];
+
+    if (!photos.length) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    for (const p of photos) {
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      const createdAt = p.createdAt ? new Date(p.createdAt).toLocaleString() : '';
+      div.innerHTML = `
+        <img src="${p.imageUrl}" alt="Trip memory" />
+        <div class="meta">
+          <div style="font-weight:800;">${p.uploadedBy || 'Unknown'}</div>
+          <div class="muted" style="margin-top:4px;">${createdAt}</div>
+        </div>
+      `;
+      galleryEl.appendChild(div);
+    }
+  }
+
+  async function checkRideCompleted() {
+    // Using existing endpoint from rides.js: GET /status/:rideId
+    const res = await fetch(`${apiBase}/rides/status/${rideId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.status || null;
+  }
+
+  async function refreshAll() {
+    uploadMsg.textContent = '';
+    setStatus('Loading ride status…', 'Ride');
+
+    const status = await checkRideCompleted();
+    if (status) {
+      if (status === 'Completed') {
+        setStatus('Ride completed. Upload is enabled.', 'Completed');
+      } else {
+        setStatus(`Ride status is ${status}. Upload disabled until completed.`, status);
+      }
+    } else {
+      setStatus('Loaded gallery (status unknown).', 'Ride');
+    }
+
+    const statusText = (status || '').toLowerCase();
+    uploadBtn.disabled = !(statusText === 'completed');
+
+    if (!uploadedBy) {
+      uploadMsg.textContent = 'Login required (missing localStorage username).';
+      uploadBtn.disabled = true;
+    }
+
+    await fetchGallery();
+  }
+
+  async function uploadPhotos() {
+    const files = Array.from(imagesInput.files || []);
+
+    if (!files.length) {
+      uploadMsg.textContent = 'Select at least 1 image.';
+      return;
+    }
+
+    if (!uploadedBy) {
+      uploadMsg.textContent = 'Login required.';
+      return;
+    }
+
+    const form = new FormData();
+    for (const f of files) form.append('images', f);
+    form.append('uploadedBy', uploadedBy);
+
+    uploadBtn.disabled = true;
+    progressBox.style.display = 'block';
+    uploadMsg.textContent = 'Uploading…';
+
+    const res = await fetch(`${apiBase}/rides/${rideId}/photos`, {
+      method: 'POST',
+      body: form
+    });
+
+    progressBox.style.display = 'none';
+
+    if (!res.ok) {
+      let errMsg = 'Upload failed.';
+      try { const e = await res.json(); if (e?.message) errMsg = e.message; } catch(_e) {}
+      uploadMsg.textContent = errMsg;
+      uploadBtn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+    uploadMsg.textContent = data.message || 'Photos uploaded successfully.';
+
+    imagesInput.value = '';
+    await refreshAll();
+    uploadBtn.disabled = false;
+  }
+
+  uploadBtn.addEventListener('click', uploadPhotos);
+  refreshBtn.addEventListener('click', refreshAll);
+
+  refreshAll();
+</script>
+</body>
+</html>
+

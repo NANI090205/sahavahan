@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rate Driver</title>
+  <style>
+    body{font-family:Segoe UI, Tahoma, sans-serif;padding:20px;background:#f4f6f8}
+    .card{background:white;padding:20px;border-radius:8px;max-width:600px;margin:30px auto;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    h1{color:#2c6fb6}
+    label{display:block;margin:10px 0 6px}
+    select,textarea{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px}
+    button{margin-top:12px;padding:10px 16px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Rate Your Ride</h1>
+    <p id="driverName"></p>
+
+    <label for="rating">Rating</label>
+    <select id="rating">
+      <option value="5">⭐⭐⭐⭐⭐</option>
+      <option value="4">⭐⭐⭐⭐</option>
+      <option value="3">⭐⭐⭐</option>
+      <option value="2">⭐⭐</option>
+      <option value="1">⭐</option>
+    </select>
+
+    <label for="review">Review (optional)</label>
+    <textarea id="review" rows="5" placeholder="Write a short review..."></textarea>
+
+    <button onclick="submitReview()">Submit Review</button>
+  </div>
+
+  <script>
+    const rideId = localStorage.getItem("reviewRideId");
+    const reviewedUser = localStorage.getItem("reviewDriver");
+
+    document.getElementById('driverName').innerText = reviewedUser ? `Driver: ${reviewedUser}` : '';
+
+    async function submitReview(){
+      const reviewer = localStorage.getItem("username");
+      const rating = Number(document.getElementById('rating').value);
+      const comment = document.getElementById('review').value;
+
+      if(!rideId || !reviewedUser || !reviewer || rating == null){
+        alert('Missing context for review.');
+        return;
+      }
+
+      console.log({ rideId, reviewer, reviewedUser, rating, comment });
+
+      const response = await fetch('/api/reviews/add',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          rideId,
+          reviewer,
+          reviewedUser,
+          rating,
+          comment,
+          // keep legacy field too (backend accepts both via resolvedComment)
+          review: comment
+        })
+      });
+
+      const data = await response.json();
+
+      alert(data.message || 'Review submitted');
+      window.location.href = 'dashboard.html';
+    }
+  </script>
+  <script src="notification-badge.js"></script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f8fb;
+      color: #263238;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      background: #263238;
+      color: white;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      cursor: pointer;
+      background: #3374c9;
+      color: white;
+      font-weight: 600;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 28px auto;
+      padding: 0 18px;
+    }
+
+    .notification-card {
+      background: white;
+      border-left: 4px solid #3374c9;
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    }
+
+    .notification-card.unread {
+      border-left-color: #e91e63;
+    }
+
+    .notification-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .notification-message {
+      margin-bottom: 8px;
+    }
+
+    .notification-time {
+      color: #607d8b;
+      font-size: 13px;
+    }
+
+    .empty {
+      padding: 24px;
+      text-align: center;
+      color: #607d8b;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔔 Notifications</h1>
+    <button onclick="window.location.href='dashboard.html'">Dashboard</button>
+  </header>
+
+  <main>
+    <div id="notificationsContainer" class="empty">Loading notifications...</div>
+  </main>
+
+  <script>
+    const username = localStorage.getItem("username");
+
+    if (!username) {
+      alert("Please login first.");
+      window.location.href = "login.html";
+    }
+
+    async function loadNotificationsPage() {
+      try {
+        const response = await fetch(
+          `/api/notifications/${encodeURIComponent(username)}`
+        );
+        const data = await response.json();
+        const notifications = Array.isArray(data)
+          ? data
+          : data.notifications || [];
+
+        const container = document.getElementById("notificationsContainer");
+        container.innerHTML = "";
+
+        if (!notifications.length) {
+          container.innerHTML = '<div class="empty">No notifications yet.</div>';
+          return;
+        }
+
+        notifications.forEach((notification) => {
+          const div = document.createElement("div");
+          div.className = `notification-card ${notification.isRead ? "" : "unread"}`;
+          div.onclick = async () => {
+            await fetch(
+              `/api/notifications/read/${notification._id}`,
+              {
+                method: "PUT"
+              }
+            );
+            notification.isRead = true;
+            div.classList.remove("unread");
+          };
+
+          const timeLabel = notification.createdAt
+            ? new Date(notification.createdAt).toLocaleString()
+            : "";
+
+          div.innerHTML = `
+            <div class="notification-title">${notification.title}</div>
+            <div class="notification-message">${notification.message}</div>
+            <div class="notification-time">${timeLabel}</div>
+          `;
+
+          container.appendChild(div);
+        });
+      } catch (error) {
+        console.error(error);
+        document.getElementById("notificationsContainer").innerHTML =
+          '<div class="empty">Failed to load notifications.</div>';
+      }
+    }
+
+    loadNotificationsPage();
+  </script>
+  <script src="notification-badge.js"></script>
+</body>
+</html>

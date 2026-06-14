@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#4338CA">
+  <meta name="description" content="SahaVahan — Secure portal to login and connect with smart carpooling networks." />
+  <title>Login — SahaVahan</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main: #F7F8FC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-muted: #F0F2F8;
+      --primary: #4338CA;
+      --primary-light: #6366F1;
+      --primary-dim: rgba(67,56,202,0.07);
+      --accent: #0EA5E9;
+      --accent-dim: rgba(14,165,233,0.08);
+      --green: #059669;
+      --green-light: #10B981;
+      --green-dim: rgba(5,150,105,0.08);
+      --amber: #D97706;
+      --text-main: #0D1117;
+      --text-muted: #5C6B82;
+      --border: #DDE3EE;
+      --border-hover: #B8C4D8;
+      --shadow-sm: 0 2px 8px rgba(13,17,23,0.05);
+      --shadow-md: 0 10px 30px rgba(13,17,23,0.09);
+      --shadow-lg: 0 24px 52px rgba(13,17,23,0.13);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.65;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ══ BACKGROUND DECORATIONS (HOMEPAGE ALIGNED) ══ */
+    .hero-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(67,56,202,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67,56,202,0.035) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 40%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 40%, transparent 100%);
+      pointer-events: none;
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 500px; height: 500px; background: radial-gradient(circle,rgba(67,56,202,.12) 0%,transparent 70%); top:-80px; left:-100px; }
+    .orb-2 { width: 450px; height: 450px; background: radial-gradient(circle,rgba(14,165,233,.10) 0%,transparent 70%); bottom:-100px; right:-60px; }
+
+    /* ══ NAV ══ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 20px 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.8); backdrop-filter: blur(22px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-logo-wrap {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .nav-logo-wrap:hover { transform: scale(1.03); }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff; box-shadow: 0 4px 12px rgba(67,56,202,0.3);
+      flex-shrink: 0;
+    }
+    .nav-logo-text {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.3px;
+    }
+    .nav-logo-text span { color: var(--primary); }
+
+    .nav-links { display: flex; align-items: center; gap: 2px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-body); font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted); text-decoration: none;
+      padding: 8px 15px; border-radius: 8px; transition: all 0.2s;
+    }
+    .nav-links a:hover { color: var(--primary); background: var(--primary-dim); }
+
+    .nav-right-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-surface); color: var(--text-main); font-size: 13px; font-weight: 500;
+      padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+      text-decoration: none; transition: all 0.2s; font-family: var(--font-body); box-shadow: var(--shadow-sm);
+    }
+    .nav-right-btn:hover { background: var(--bg-surface-muted); border-color: var(--border-hover); transform: translateY(-1px); }
+
+    /* ══ MAIN WRAPPER ══ */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ══ PREMIUM LOGIN CARD ══ */
+    #container {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.6);
+      width: 100%;
+      max-width: 460px;
+      border-radius: 24px;
+      padding: 44px 40px;
+      transform: translateY(10px);
+      opacity: 0;
+      animation: cardFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    #container:hover {
+      border-color: rgba(63, 102, 241, 0.25);
+      box-shadow: 0 30px 60px rgba(13,17,23,0.16);
+    }
+    @keyframes cardFadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Branding Inside Card */
+    .brand-meta {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .brand-meta-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 20px; color: #fff; box-shadow: 0 6px 16px rgba(67,56,202,0.25);
+      margin-bottom: 16px;
+    }
+    .brand-meta h2 {
+      font-family: var(--font-display);
+      font-size: 28px; font-weight: 800;
+      color: var(--text-main); letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .brand-meta p {
+      font-size: 14px; color: var(--text-muted);
+    }
+
+    /* ══ FORM STRUCTURE ══ */
+    #loginForm {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 12.5px; font-weight: 600;
+      color: var(--text-main); letter-spacing: 0.3px;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrapper i {
+      position: absolute; left: 14px;
+      color: var(--text-muted); font-size: 14px;
+      pointer-events: none; transition: color 0.2s;
+    }
+    #loginForm input {
+      width: 100%;
+      background: var(--bg-surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px 13px 40px;
+      font-size: 14px; font-family: var(--font-body);
+      color: var(--text-main); outline: none;
+      transition: all 0.25s ease;
+    }
+    #loginForm input:focus {
+      background: var(--bg-surface);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-dim);
+    }
+    #loginForm input:focus + i {
+      color: var(--primary);
+    }
+
+    /* Action links row */
+    .form-options {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -6px;
+    }
+    .form-options a {
+      font-size: 12.5px; font-weight: 500;
+      color: var(--primary-light); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .form-options a:hover { color: var(--primary); text-decoration: underline; }
+
+    /* ══ BUTTON STYLE ══ */
+    #loginForm button[type="submit"] {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 14px; font-weight: 600; font-family: var(--font-body);
+      padding: 14px; cursor: pointer; margin-top: 6px;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 4px 16px rgba(67,56,202,0.3);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #loginForm button[type="submit"]:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(67,56,202,0.42);
+    }
+    #loginForm button[type="submit"]:active { transform: translateY(0); }
+
+    /* Alternate Links Utilities */
+    .form-divider {
+      display: flex; align-items: center; text-align: center;
+      margin: 12px 0; color: var(--text-muted); font-size: 12px;
+    }
+    .form-divider::before, .form-divider::after {
+      content: ''; flex: 1; border-bottom: 1px solid var(--border);
+    }
+    .form-divider:not(:empty)::before { margin-right: .75em; }
+    .form-divider:not(:empty)::after { margin-left: .75em; }
+
+    .signup-prompt {
+      text-align: center; font-size: 13.5px; color: var(--text-muted);
+    }
+    .signup-prompt a {
+      color: var(--primary); font-weight: 600; text-decoration: none;
+    }
+    .signup-prompt a:hover { text-decoration: underline; }
+
+    /* ══ TRUST SECTION ══ */
+    .trust-strip {
+      margin-top: 36px; padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; text-align: center;
+    }
+    .trust-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      color: var(--text-muted); font-size: 11px; font-weight: 500;
+    }
+    .trust-item i {
+      font-size: 14px;
+    }
+    .trust-item.sec i { color: var(--primary-light); }
+    .trust-item.com i { color: var(--accent); }
+    .trust-item.eco i { color: var(--green-light); }
+
+    /* Responsive adjustments */
+    @media (max-width: 760px) {
+      nav { padding: 14px 24px; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 480px) {
+      #container { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav id="main-nav">
+    <a href="index.html" class="nav-logo-wrap" aria-label="SahaVahan Home">
+      <div class="nav-logo-icon" aria-hidden="true">
+        <i class="fa-solid fa-car-side" style="font-size: 14px;"></i>
+      </div>
+      <div class="nav-logo-text">Saha<span>Vahan</span></div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="aboutus.html">About Us</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="signup.html" class="nav-right-btn"><i class="fa-solid fa-user-plus"></i> Join Us</a>
+    </div>
+  </nav>
+
+  <main>
+    <div id="container">
+      <div class="brand-meta">
+        <div class="brand-meta-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <h2>Welcome Back</h2>
+        <p>Sign in to continue your journey.</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <div class="input-wrapper">
+            <input type="email" id="email" name="email" placeholder="name@domain.com" required />
+            <i class="fa-solid fa-envelope"></i>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="password" name="password" placeholder="••••••••" required />
+            <i class="fa-solid fa-lock"></i>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <a href="forgot-password.html">Forgot Password?</a>
+        </div>
+        
+        <button type="submit">Sign In <i class="fa-solid fa-arrow-right-to-bracket" style="font-size:12px;"></i></button>
+        
+        <div class="form-divider">or</div>
+
+        <p class="signup-prompt">
+          Don't have an account? <a href="signup.html">Signup now</a>
+        </p>
+      </form>
+
+      <div class="trust-strip">
+        <div class="trust-item sec">
+          <i class="fa-solid fa-user-shield"></i>
+          <span>Secure Login</span>
+        </div>
+        <div class="trust-item com">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>Verified Network</span>
+        </div>
+        <div class="trust-item eco">
+          <i class="fa-solid fa-leaf"></i>
+          <span>Eco Commuting</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      try {
+          const response = await fetch("/api/users/login", {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                  email,
+                  password
+              })
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+              localStorage.setItem("username", data.username);
+              localStorage.setItem("uniqueCode", data.uniqueCode);
+              localStorage.setItem("phoneNumber", data.phoneNumber || "");
+              localStorage.setItem("role", data.role || "user");
+
+              alert("Login successful!");
+              const redirect = data.redirect || (data.role === "admin" ? "admin-dashboard.html" : "dashboard.html");
+              window.location.href = redirect;
+          } else {
+              alert(data.message || "Login failed");
+          }
+
+      } catch (err) {
+          console.error(err);
+          alert("Server Error");
+      }
+  });
+  </script>
+  <script src="notification-badge.js"></script>
+  <script src="firebase.js"></script>
+</body>
+</html>

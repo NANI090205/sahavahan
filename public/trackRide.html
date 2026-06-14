@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Ride Tracking</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      color: #222;
+    }
+
+    header {
+      background: #007bff;
+      color: white;
+      padding: 16px 18px;
+    }
+
+    .container {
+      padding: 16px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .top-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .value {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    #map {
+      height: 70vh;
+      width: 100%;
+      border-radius: 10px;
+      background: #eaeaea;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .muted {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-block;
+      background: #ff9800;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .pill.completed {
+      background: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2 style="margin:0;">Live Ride Tracking</h2>
+  </header>
+
+  <div class="container">
+    <div class="top-row">
+      <div class="card">
+        <div class="label">Ride Status</div>
+        <div class="value" id="statusText">Ongoing</div>
+        <div class="muted" id="statusSub">Moving...</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Your Pickup</div>
+        <div class="value" id="pickupText">—</div>
+        <div class="muted" id="pickupSub">—</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Your Drop</div>
+        <div class="value" id="dropText">—</div>
+        <div class="muted" id="dropSub">—</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Driver</div>
+        <div class="value" id="driverText">—</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Drop OTP</div>
+        <div class="value" id="dropOtpText">—</div>
+        <div class="muted" id="dropOtpSub">Reveal at destination</div>
+        <div style="margin-top:8px;">
+          <button id="revealDropOtpBtn" style="background:#198754;color:white;border:none;border-radius:8px;padding:10px 12px;font-weight:900;cursor:pointer;width:100%;">🔒 Reveal Drop OTP</button>
+        </div>
+        <div style="margin-top:10px;display:none;" id="dropOtpVerifyWrap">
+          <input id="dropOtpInput" placeholder="Enter Drop OTP" style="width:100%;padding:12px;border-radius:10px;border:2px solid #ddd;" />
+          <button id="verifyDropOtpBtn" style="margin-top:8px;background:#0b5ed7;color:white;border:none;border-radius:10px;padding:12px 14px;font-weight:900;cursor:pointer;width:100%;">✅ Verify Drop</button>
+          <div id="dropOtpStatus" style="margin-top:8px;font-size:13px;color:#555;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Map</div>
+        <div class="muted">📍 Driver location updates every few seconds</div>
+      </div>
+    </div>
+
+
+    <div id="map"></div>
+  </div>
+
+  <!-- SOS Button -->
+  <div style="padding:16px; max-width:980px; margin:0 auto;">
+    <button id="sosBtn" onclick="triggerSOS()">🚨 EMERGENCY SOS</button>
+    <div id="sosStatus" style="margin-top:10px; font-size:13px; color:#555;"></div>
+  </div>
+
+  <div style="padding:16px; max-width:980px; margin:0 auto;">
+    <button id="navigatePickupBtn" onclick="navigateToPickup()" style="width:100%; background:#198754; color:white; font-size:18px; padding:15px; border:none; border-radius:10px; font-weight:900; cursor:pointer;">
+      🧭 Navigate To Pickup
+    </button>
+  </div>
+
+
+  <style>
+    #sosBtn{
+      background:red;
+      color:white;
+      font-size:18px;
+      padding:15px;
+      border:none;
+      border-radius:10px;
+      width:100%;
+      max-width:520px;
+      cursor:pointer;
+    }
+  </style>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <script>
+    // SOS: capture location and call /api/sos/trigger
+    function setSOSStatus(msg){
+      const el = document.getElementById('sosStatus');
+      if (el) el.textContent = msg;
+    }
+
+    async function triggerSOS(){
+      try {
+        const username = localStorage.getItem('username');
+        if (!username) {
+          alert('Session expired! Please login again.');
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const rideId = new URLSearchParams(window.location.search).get('rideId');
+        if (!rideId) {
+          alert('Missing rideId in query string.');
+          return;
+        }
+
+        setSOSStatus('Getting live location...');
+
+        navigator.geolocation.getCurrentPosition(
+          async (position)=>{
+            try {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+
+              setSOSStatus('Sending SOS...');
+
+              const res = await fetch('/api/sos/trigger', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ username, lat, lng, rideId })
+              });
+
+              const data = await res.json().catch(()=>({}));
+              if (!res.ok) throw new Error(data?.message || 'SOS failed');
+
+              setSOSStatus('SOS Triggered. Help is on the way.');
+            } catch (e){
+              console.error(e);
+              setSOSStatus('SOS failed to send.');
+              alert('SOS failed to send.');
+            }
+          },
+          (err)=>{
+            console.error('geolocation error', err);
+            setSOSStatus('Location permission denied.');
+            alert('Location permission denied.');
+          },
+          { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
+        );
+      } catch(e){
+        console.error(e);
+        setSOSStatus('SOS failed.');
+      }
+    }
+
+    // ----- RideId from query string -----
+    const rideId = new URLSearchParams(window.location.search).get('rideId');
+    if (!rideId) {
+      alert('Missing rideId in query string. Example: trackRide.html?rideId=...');
+      throw new Error('Missing rideId');
+    }
+
+
+    // ----- Leaflet map -----
+    const map = L.map('map').setView([20.5937,78.9629], 13);
+    const driverMarker = L.marker([0, 0]).addTo(map);
+
+    // ----- Status UI -----
+    const statusText = document.getElementById('statusText');
+    const statusSub = document.getElementById('statusSub');
+    const driverText = document.getElementById('driverText');
+
+    const pickupText = document.getElementById('pickupText');
+    const pickupSub = document.getElementById('pickupSub');
+    const dropText = document.getElementById('dropText');
+    const dropSub = document.getElementById('dropSub');
+
+
+    const setCompletedUI = () => {
+      statusText.textContent = 'Completed';
+      statusText.classList?.add('completed');
+      statusSub.textContent = 'Arrived.';
+    };
+
+    const setInProgressUI = () => {
+      statusText.textContent = 'In Progress';
+      statusSub.textContent = 'Moving...';
+    };
+
+    // ----- Socket.IO -----
+    const socket = io();
+
+    // Join ride room
+    socket.emit('passengerJoinRide', { rideId });
+
+    async function loadPassengerBooking() {
+      try {
+        const username = localStorage.getItem('username');
+        if (!username) return;
+
+        const res = await fetch(`/api/passenger-bookings/${rideId}?username=${encodeURIComponent(username)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (pickupText) pickupText.textContent = data.boardingPoint || '—';
+        if (dropText) dropText.textContent = data.dropPoint || '—';
+
+        if (pickupSub) pickupSub.textContent = 'Your Pickup';
+        if (dropSub) dropSub.textContent = 'Your Drop';
+      } catch (e) {
+        console.error('loadPassengerBooking error:', e);
+      }
+    }
+
+    // Optional: fetch initial ride details for driver name + status
+    async function loadInitialRide() {
+      try {
+        const res = await fetch(`/api/rides/status/${rideId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        driverText.textContent = data.username || '—';
+
+        if (data.status === 'Completed') {
+          setCompletedUI();
+        } else if (data.status === 'In Progress') {
+          setInProgressUI();
+        } else {
+          // Scheduled (tracking is off for Scheduled, but show a safe label)
+          statusText.textContent = data.status || 'Scheduled';
+          statusSub.textContent = 'Waiting...';
+        }
+
+
+        if (typeof data.driverLat === 'number' && typeof data.driverLng === 'number') {
+          driverMarker.setLatLng([data.driverLat, data.driverLng]);
+          map.panTo([data.driverLat, data.driverLng]);
+        }
+
+        // Prefetch navigation coordinates if available
+        window.__boardingCoords = {
+          lat: data.boardingLat,
+          lng: data.boardingLng
+        };
+      } catch (e) {
+        console.error('Initial ride load failed:', e);
+      }
+    }
+
+
+    await loadPassengerBooking();
+
+    // Live updates
+
+    let lastRideStatus = null;
+    socket.on('locationUpdated', async (data) => {
+      if (!data || String(data.rideId) !== String(rideId)) return;
+
+      // If ride is completed, ignore updates (we still may get stragglers)
+      if (lastRideStatus === 'Completed') return;
+
+      // Tracking OFF unless ride is In Progress
+      if (lastRideStatus && lastRideStatus !== 'In Progress') return;
+
+
+      const { lat, lng } = data;
+      if (typeof lat !== 'number' || typeof lng !== 'number') return;
+
+      driverMarker.setLatLng([lat, lng]);
+      map.panTo([lat, lng]);
+
+      // Update UI as ongoing unless we know completed
+      if (statusText.textContent !== 'In Progress') {
+        // Keep completed state if already set
+        if (lastRideStatus !== 'Completed') setInProgressUI();
+      }
+
+        // Poll ride status occasionally to auto-stop.
+        // (Simple approach without additional socket events.)
+        if (!socket.__statusPollingStarted) {
+
+        socket.__statusPollingStarted = true;
+        setInterval(async () => {
+          try {
+            const r = await fetch(`/api/rides/status/${rideId}`);
+            if (!r.ok) return;
+            const s = await r.json();
+            lastRideStatus = s.status;
+            if (s.status === 'Completed') {
+              setCompletedUI();
+            }
+          } catch (_) {}
+        }, 4000);
+      }
+    });
+
+    // Navigation action
+    function navigateToPickup() {
+      try {
+        const coords = window.__boardingCoords;
+        const lat = coords?.lat;
+        const lng = coords?.lng;
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          alert('Pickup coordinates not available for this booking.');
+          return;
+        }
+
+        window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+      } catch (e) {
+        console.error('navigateToPickup error:', e);
+        alert('Failed to navigate to pickup.');
+      }
+    }
+
+    // ---- Drop OTP reveal + verify (Passenger) ----
+    const revealDropOtpBtn = document.getElementById('revealDropOtpBtn');
+    const dropOtpVerifyWrap = document.getElementById('dropOtpVerifyWrap');
+    const dropOtpInput = document.getElementById('dropOtpInput');
+    const verifyDropOtpBtn = document.getElementById('verifyDropOtpBtn');
+    const dropOtpStatus = document.getElementById('dropOtpStatus');
+
+    let __dropOtpCache = null;
+
+    async function loadDropOtpState() {
+      try {
+        const username = localStorage.getItem('username');
+        if (!username) return;
+
+        const res = await fetch(`/api/passenger-bookings/${rideId}?username=${encodeURIComponent(username)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.dropOTPVerified) {
+          if (dropOtpStatus) dropOtpStatus.textContent = '✅ Dropped Successfully';
+          if (dropOtpText) dropOtpText.textContent = '—';
+          if (revealDropOtpBtn) revealDropOtpBtn.style.display = 'none';
+          if (dropOtpVerifyWrap) dropOtpVerifyWrap.style.display = 'none';
+          return;
+        }
+
+        // Show booked drop OTP during ride. Reveal button unlocks it.
+        __dropOtpCache = data.dropOTP || null;
+        if (dropOtpText) dropOtpText.textContent = '—';
+      } catch (e) {
+        console.error('loadDropOtpState error:', e);
+      }
+    }
+
+    if (revealDropOtpBtn) {
+      revealDropOtpBtn.addEventListener('click', () => {
+        if (!__dropOtpCache) {
+          alert('Drop OTP not available yet.');
+          return;
+        }
+        if (dropOtpText) dropOtpText.textContent = String(__dropOtpCache);
+        if (dropOtpVerifyWrap) dropOtpVerifyWrap.style.display = 'block';
+        if (revealDropOtpBtn) revealDropOtpBtn.style.display = 'none';
+      });
+    }
+
+    if (verifyDropOtpBtn) {
+      verifyDropOtpBtn.addEventListener('click', async () => {
+        try {
+          if (!dropOtpInput || !dropOtpInput.value) {
+            alert('Enter Drop OTP');
+            return;
+          }
+
+          // bookingId is required for drop verification
+          const bookingId = new URLSearchParams(window.location.search).get('bookingId');
+          if (!bookingId) {
+            alert('Missing bookingId in query string. Use trackRide.html?rideId=...&bookingId=...');
+            return;
+          }
+
+          if (!dropOtpStatus) return;
+          dropOtpStatus.textContent = 'Verifying...';
+
+          const username = localStorage.getItem('username');
+          const otp = String(dropOtpInput.value).trim();
+
+          const r = await fetch('/api/rides/verify-drop-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId, otp, username })
+          });
+
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data?.message || 'Verify failed');
+
+          dropOtpStatus.textContent = '✅ Dropped Successfully';
+          if (dropOtpText) dropOtpText.textContent = otp;
+          if (dropOtpVerifyWrap) dropOtpVerifyWrap.style.display = 'none';
+
+        } catch (e) {
+          console.error(e);
+          if (dropOtpStatus) dropOtpStatus.textContent = '❌ Invalid OTP';
+        }
+      });
+    }
+
+    await loadInitialRide();
+    await loadDropOtpState();
+  </script>
+</body>
+</html>
+
+
+

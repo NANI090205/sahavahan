@@ -1,0 +1,15 @@
+/* Optional local styles for Hall of Fame */
+.leader-card{
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);
+  padding:14px 18px;
+  margin:10px 0;
+}
+#hallOfFame{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap:12px;
+  margin-top:12px;
+}
+

@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SahaVahan Admin Panel</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main: #F7F8FC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-muted: #F0F2F8;
+      --primary: #4338CA;
+      --primary-light: #6366F1;
+      --primary-dim: rgba(67,56,202,0.07);
+      --accent: #0EA5E9;
+      --accent-dim: rgba(14,165,233,0.08);
+      --green: #059669;
+      --green-light: #10B981;
+      --green-dim: rgba(5,150,105,0.08);
+      --amber: #D97706;
+      --amber-light: #F59E0B;
+      --rose: #E11D48;
+      --text-main: #0D1117;
+      --text-muted: #5C6B82;
+      --border: #DDE3EE;
+      --border-hover: #B8C4D8;
+      --shadow-sm: 0 2px 8px rgba(13,17,23,0.05);
+      --shadow-md: 0 10px 30px rgba(13,17,23,0.09);
+      --shadow-lg: 0 24px 52px rgba(13,17,23,0.13);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.65;
+      cursor: none;
+      padding-top: 100px; /* Space for fixed nav */
+    }
+
+    /* ══ CUSTOM CURSOR ══ */
+    #cursor-dot {
+      position: fixed; width: 10px; height: 10px;
+      background: var(--primary); border-radius: 50%;
+      pointer-events: none; z-index: 99999;
+      transform: translate(-50%,-50%);
+      transition: background 0.18s, width 0.18s, height 0.18s, border-radius 0.18s;
+      mix-blend-mode: multiply;
+    }
+    #cursor-ring {
+      position: fixed; width: 36px; height: 36px;
+      border: 2px solid rgba(67,56,202,0.4); border-radius: 50%;
+      pointer-events: none; z-index: 99998;
+      transform: translate(-50%,-50%);
+      transition: width 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  height 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  border-color 0.2s, background 0.2s, opacity 0.2s;
+    }
+    body.c-btn  #cursor-dot  { width: 18px; height: 18px; background: var(--primary); }
+    body.c-btn  #cursor-ring { width: 52px; height: 52px; border-color: rgba(67,56,202,0.6); background: rgba(67,56,202,0.05); }
+    body.c-card #cursor-dot  { width: 14px; height: 14px; background: var(--accent); }
+    body.c-card #cursor-ring { width: 46px; height: 46px; border-color: rgba(14,165,233,0.45); }
+    body.c-text #cursor-dot  { width: 3px; height: 20px; border-radius: 2px; background: var(--primary); }
+    body.c-text #cursor-ring { opacity: 0; }
+
+    /* ══ ORBS ══ */
+    .orb { position: absolute; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 640px; height: 640px; background: radial-gradient(circle,rgba(67,56,202,.12) 0%,transparent 70%); top:-100px; left:-140px; }
+    .orb-2 { width: 520px; height: 520px; background: radial-gradient(circle,rgba(14,165,233,.10) 0%,transparent 70%); top:30%; right:-90px; }
+    .orb-3 { width: 420px; height: 420px; background: radial-gradient(circle,rgba(5,150,105,.07) 0%,transparent 70%); bottom:15%; left:12%; }
+
+    /* ══ NAV ══ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 13px 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.9); backdrop-filter: blur(22px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-logo-wrap {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .nav-logo-wrap:hover { transform: scale(1.03); }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff; box-shadow: 0 4px 12px rgba(67,56,202,0.3);
+      flex-shrink: 0;
+    }
+    .nav-logo-text {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.3px;
+    }
+    .nav-logo-text span { color: var(--primary); }
+
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+
+    /* ══ BUTTON STYLES SYSTEM ══ */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; font-size: 13.5px; font-weight: 600;
+      padding: 11px 22px; border-radius: 10px; border: none; cursor: none;
+      text-decoration: none; transition: all 0.25s; font-family: var(--font-body);
+      box-shadow: 0 4px 14px rgba(67,56,202,0.28);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(67,56,202,0.42); }
+    
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-surface); color: var(--text-main); font-size: 13.5px; font-weight: 500;
+      padding: 11px 22px; border-radius: 10px; border: 1px solid var(--border); cursor: none;
+      text-decoration: none; transition: all 0.2s; font-family: var(--font-body); box-shadow: var(--shadow-sm);
+    }
+    .btn-ghost:hover { background: var(--bg-surface-muted); border-color: var(--border-hover); transform: translateY(-1px); }
+
+    .btn-danger {
+      background: #FFF1F2; color: var(--rose); font-size: 12.5px; font-weight: 600;
+      padding: 6px 14px; border-radius: 8px; border: 1px solid #FECDD3; cursor: none;
+      transition: all 0.2s; font-family: var(--font-body);
+    }
+    .btn-danger:hover { background: var(--rose); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(225,29,72,0.25); }
+
+    .btn-success {
+      background: #ECFDF5; color: var(--green); font-size: 12.5px; font-weight: 600;
+      padding: 6px 14px; border-radius: 8px; border: 1px solid #A7F3D0; cursor: none;
+      transition: all 0.2s; font-family: var(--font-body);
+    }
+    .btn-success:hover { background: var(--green); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.25); }
+
+    /* ══ PAGE LAYOUT ══ */
+    .container {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ══ ADMIN HEADER AREA ══ */
+    header {
+      margin: 40px 0;
+      text-align: left;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 10px;
+    }
+    .sh {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800; letter-spacing: -1px; line-height: 1.15;
+      color: var(--text-main);
+    }
+
+    /* ══ STATS GRID (METRICS BAR) ══ */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+    .card {
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border);
+      padding: 30px 24px;
+      border-radius: 20px;
+      box-shadow: var(--shadow-sm);
+      position: relative; overflow: hidden;
+      transition: all 0.32s cubic-bezier(0.34,1.4,0.64,1);
+    }
+    .card::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+    }
+    .card:hover { transform: translateY(-5px); border-color: rgba(67,56,202,0.25); box-shadow: var(--shadow-md); }
+    .card:hover::after { transform: scaleX(1); }
+
+    .card h2 {
+      font-family: var(--font-display);
+      font-size: 36px; font-weight: 800;
+      color: var(--primary); letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+    .card.accent-card h2 { color: var(--accent); }
+    .card.green-card h2 { color: var(--green); }
+    
+    .card p {
+      font-size: 13.5px; color: var(--text-muted); font-weight: 500;
+    }
+
+    /* ══ TABLES / SECTIONS ══ */
+    .section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 36px;
+      margin-bottom: 36px;
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: box-shadow 0.3s;
+    }
+    .section:hover { box-shadow: var(--shadow-md); }
+    
+    .section h2 {
+      font-family: var(--font-display);
+      font-size: 20px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.3px;
+      margin-bottom: 24px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section h2::before {
+      content: '●'; color: var(--accent); font-size: 12px;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-main);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--bg-surface-muted);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      text-align: left;
+      vertical-align: middle;
+      transition: background 0.2s;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(247,248,252,0.6); color: var(--text-main); }
+
+    /* Media Document Images styling matching verifications */
+    .verification-img {
+      max-width: 90px; max-height: 60px; 
+      border-radius: 8px; border: 1px solid var(--border);
+      object-fit: cover; box-shadow: var(--shadow-sm);
+      transition: transform 0.2s;
+    }
+    .verification-img:hover { transform: scale(1.08); }
+
+    /* Badges mimicking homepage elements */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700;
+      border-radius: 6px; padding: 3px 8px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .badge-admin { background: var(--primary-dim); color: var(--primary); border: 1px solid rgba(67,56,202,0.15); }
+    .badge-user { background: var(--bg-surface-muted); color: var(--text-muted); }
+    .badge-alert { background: #FFF1F2; color: var(--rose); border: 1px solid #FECDD3; }
+
+    @media (max-width: 860px) {
+      nav { padding: 14px 20px; }
+      .section { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <nav id="main-nav">
+    <a href="index.html" class="nav-logo-wrap" aria-label="SahaVahan Home">
+      <div class="nav-logo-icon">
+        <i class="fa-solid fa-car-side" style="font-size:14px;color:#fff;"></i>
+      </div>
+      <div class="nav-logo-text">Saha<span>Vahan</span></div>
+    </a>
+    <div class="nav-right">
+      <button class="btn-ghost" onclick="goHome()"><i class="fa-solid fa-arrow-left" style="font-size:11px;"></i> Home</button>
+      <button class="btn-primary" onclick="goAnalytics()"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    
+    <header>
+      <div class="eyebrow"><i class="fa-solid fa-shield-halved fa-xs"></i> Administrative Workspace</div>
+      <h1 class="sh">System Controller</h1>
+    </header>
+
+    <div class="stats">
+      <div class="card">
+        <h2 id="usersCount">0</h2>
+        <p>Total Community Users</p>
+      </div>
+      <div class="card accent-card">
+        <h2 id="ridesCount">0</h2>
+        <p>Active Routes Published</p>
+      </div>
+      <div class="card">
+        <h2 id="bookingsCount">0</h2>
+        <p>Completed Shared Bookings</p>
+      </div>
+      <div class="card green-card">
+        <h2 id="revenueCount">₹0</h2>
+        <p>Gross Platform Processing</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Registered Members</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email Signature</th>
+              <th>System Reference Code</th>
+              <th>Authorization Role</th>
+              <th>Trust Factor Score</th>
+              <th>Action Handlers</th>
+            </tr>
+          </thead>
+          <tbody id="usersTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Pending Credentials Verification</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Applicant</th>
+              <th>Driving License</th>
+              <th>Registration Certificate</th>
+              <th>Active Insurance</th>
+              <th>Emission Compliance (PUC)</th>
+              <th>Biometric Selfie Check</th>
+              <th>Determinations</th>
+            </tr>
+          </thead>
+          <tbody id="driverVerificationsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Suspicious Behaviour Signals</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Flagged Identity</th>
+              <th>Trust Quotient</th>
+              <th>Performance Average</th>
+              <th>Active Deployments</th>
+              <th>System Bookings</th>
+              <th>Issued Safe Warnings</th>
+            </tr>
+          </thead>
+          <tbody id="suspiciousUsersTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Active Deployments Registry</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Publisher Handle</th>
+              <th>Departure Axis</th>
+              <th>Arrival Axis</th>
+              <th>Scheduled Window</th>
+              <th>Calculated Cost Split</th>
+              <th>System Handlers</th>
+            </tr>
+          </thead>
+          <tbody id="ridesTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Shared Fare Assertions</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Rider Account</th>
+              <th>Operator Account</th>
+              <th>Transit Vector</th>
+              <th>Booked Capacities</th>
+              <th>Calculated Invoice</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🚫 Community Grievance Reports</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Originator Account</th>
+              <th>Subject Entity</th>
+              <th>Categorized Conflict</th>
+              <th>Incident Narrative</th>
+              <th>Resolution Stage</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="reportsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🚨 High Priority Emergency Broadcasts (SOS)</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Distressed Operator</th>
+              <th>Incident Corridor Path</th>
+              <th>Broadcast Signal Message</th>
+              <th>Verification Status</th>
+              <th>System Trigger Date</th>
+            </tr>
+          </thead>
+          <tbody id="sosAlertsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const role = localStorage.getItem("role");
+
+    if(role !== "admin"){
+      alert("Access Denied");
+      window.location.href = "index.html";
+    }
+
+    async function loadStats(){
+      const res = await fetch("/api/admin/stats");
+      const data = await res.json();
+      document.getElementById("usersCount").innerText = data.users;
+      document.getElementById("ridesCount").innerText = data.rides;
+      document.getElementById("bookingsCount").innerText = data.bookings;
+      document.getElementById("revenueCount").innerText = "₹" + data.revenue;
+    }
+
+    async function loadUsers(){
+      const res = await fetch("/api/admin/users");
+      const users = await res.json();
+      const table = document.getElementById("usersTable");
+      table.innerHTML="";
+      users.forEach(user=>{
+        const isAdm = (user.role === 'admin');
+        table.innerHTML += `
+          <tr>
+            <td style="font-weight: 500; color: var(--text-main);">${user.username}</td>
+            <td>${user.email}</td>
+            <td><code style="background: var(--primary-dim); padding: 3px 6px; border-radius: 4px; font-weight:600; color:var(--primary); font-size:12px;">${user.uniqueCode}</code></td>
+            <td><span class="badge ${isAdm ? 'badge-admin' : 'badge-user'}">${user.role || "user"}</span></td>
+            <td style="font-weight: 700; color: ${user.trustScore < 70 ? 'var(--rose)' : 'var(--green)'};">${user.trustScore != null ? user.trustScore : 100}</td>
+            <td><button class="btn-danger" onclick="deleteUser('${user._id}')"><i class="fa-solid fa-trash-can"></i> Delete</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    async function loadRides(){
+      const res = await fetch("/api/admin/rides");
+      const rides = await res.json();
+      const table = document.getElementById("ridesTable");
+      table.innerHTML="";
+      rides.forEach(ride=>{
+        table.innerHTML += `
+          <tr>
+            <td style="font-weight: 500; color: var(--text-main);">${ride.username}</td>
+            <td style="font-weight: 600; color: var(--text-main);">${ride.source}</td>
+            <td style="font-weight: 600; color: var(--accent);">${ride.destination}</td>
+            <td>${ride.date}</td>
+            <td style="font-weight: 700; color: var(--primary);">₹${ride.price}</td>
+            <td><button class="btn-danger" onclick="deleteRide('${ride._id}')"><i class="fa-solid fa-ban"></i> Rescind</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    async function loadBookings(){
+      const res = await fetch("/api/admin/bookings");
+      const bookings = await res.json();
+      const table = document.getElementById("bookingsTable");
+      table.innerHTML="";
+      bookings.forEach(booking=>{
+        table.innerHTML += `
+          <tr>
+            <td>${booking.bookedBy}</td>
+            <td>${booking.publishedBy}</td>
+            <td style="font-weight: 500;">${booking.source} → ${booking.destination}</td>
+            <td style="font-weight:600;">${booking.seatsBooked} seats</td>
+            <td style="font-weight: 700; color: var(--green);">₹${booking.totalPrice}</td>
+          </tr>
+        `;
+      });
+    }
+
+    async function loadReports(){
+      const res = await fetch("/api/reports/all");
+      const reports = await res.json();
+      const table = document.getElementById("reportsTable");
+      table.innerHTML = "";
+
+      if (!reports.length) {
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px;">No community file logs recorded.</td></tr>`;
+        return;
+      }
+
+      reports.forEach((report) => {
+        const date = report.createdAt ? new Date(report.createdAt).toLocaleDateString() : "";
+        table.innerHTML += `
+          <tr>
+            <td>${report.reportedBy || "-"}</td>
+            <td style="font-weight:500; color:var(--text-main);">${report.reportedUser || "-"}</td>
+            <td><span class="badge badge-alert">${report.reason || "-"}</span></td>
+            <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${report.description || "-"}</td>
+            <td style="font-weight: 600;">${report.status || "Pending"}</td>
+            <td>${date}</td>
+          </tr>
+        `;
+      });
+    }
+
+    async function loadSOSAlerts(){
+      const res = await fetch("/api/sos/all");
+      const alerts = await res.json();
+      const table = document.getElementById("sosAlertsTable");
+      table.innerHTML = "";
+
+      if (!alerts.length) {
+        table.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px;">All metrics report secure conditions.</td></tr>`;
+        return;
+      }
+
+      alerts.forEach(alert=>{
+        const date = alert.createdAt ? new Date(alert.createdAt).toLocaleDateString() : "";
+        table.innerHTML += `
+          <tr style="background: rgba(225,29,72,0.02)">
+            <td style="color:var(--rose); font-weight:700;">${alert.username || "-"}</td>
+            <td style="font-weight:500;">${alert.source || "-"} → ${alert.destination || "-"}</td>
+            <td style="color:var(--text-main); font-weight:500;">${alert.message || "-"}</td>
+            <td><span class="badge badge-alert">${alert.status || "Open"}</span></td>
+            <td>${date}</td>
+          </tr>
+        `;
+      });
+    }
+
+    async function deleteUser(id){
+      if(!confirm("Delete this user?")) return;
+      await fetch(`/api/admin/user/${id}`, { method:"DELETE" });
+      loadUsers();
+      loadStats();
+    }
+
+    async function decideVerification(verificationId, decision){
+      try{
+        const resp = await fetch('/api/admin/verify-driver',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ verificationId, decision })
+        });
+        const data = await resp.json();
+        if(!resp.ok){
+          alert(data.message || 'Decision failed');
+          return;
+        }
+        alert(data.message || `Driver ${decision}`);
+        loadDriverVerifications();
+      }catch(e){
+        console.error(e);
+        alert('Decision failed');
+      }
+    }
+
+    async function deleteRide(id){
+      if(!confirm("Delete this ride?")) return;
+      await fetch(`/api/admin/ride/${id}`, { method:"DELETE" });
+      loadRides();
+      loadStats();
+    }
+
+    async function loadDriverVerifications(){
+      try {
+        const res = await fetch("/api/admin/verification-requests");
+        if(!res.ok) return;
+        const requests = await res.json();
+        const table = document.getElementById("driverVerificationsTable");
+        if(!table) return;
+
+        table.innerHTML = "";
+
+        (requests || []).forEach((v) => {
+          const license = v.drivingLicense || v.licenseImage || "";
+          const rc = v.rcBook || v.rcImage || "";
+          const ins = v.insurance || v.insuranceImage || "";
+          const puc = v.pollutionCertificate || "";
+          const selfie = v.selfieImage || "";
+
+          const toImg = (url) => url ? `<img src="${url}" class="verification-img" />` : "-";
+
+          table.innerHTML += `
+            <tr>
+              <td style="font-weight: 500; color: var(--text-main);">${v.username}</td>
+              <td>${toImg(license)}</td>
+              <td>${toImg(rc)}</td>
+              <td>${toImg(ins)}</td>
+              <td>${toImg(puc)}</td>
+              <td>${toImg(selfie)}</td>
+              <td>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn-success" onclick="decideVerification('${v._id}','Approved')"><i class="fa-solid fa-check"></i> Grant</button>
+                  <button class="btn-danger" onclick="decideVerification('${v._id}','Rejected')"><i class="fa-solid fa-xmark"></i> Deny</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        console.error("loadDriverVerifications failed:", e);
+      }
+    }
+
+    async function loadSuspiciousUsers(){
+      const res = await fetch("/api/admin/fraud-users");
+      const users = await res.json();
+      const table = document.getElementById("suspiciousUsersTable");
+      table.innerHTML="";
+
+      if (!users.length) {
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px;">No metric thresholds crossed. Integrity checked.</td></tr>`;
+        return;
+      }
+
+      users.forEach((user) => {
+        table.innerHTML += `
+          <tr>
+            <td style="font-weight: 500; color: var(--text-main);">${user.username}</td>
+            <td style="font-weight:700; color:var(--rose);">${user.trustScore}</td>
+            <td>${user.avgRating || 0} ★</td>
+            <td>${user.publishedRides} deployments</td>
+            <td>${user.bookingsAsPublisher} instances</td>
+            <td><span class="badge badge-alert">${user.warnings} warning logs</span></td>
+          </tr>
+        `;
+      });
+    }
+
+    function goHome(){ window.location.href = "index.html"; }
+    function goAnalytics(){ window.location.href = "analytics.html"; }
+
+    // INITIALIZATION RUNNERS
+    loadStats();
+    loadUsers();
+    loadDriverVerifications();
+    loadSuspiciousUsers();
+    loadRides();
+    loadBookings();
+    loadReports();
+    loadSOSAlerts();
+
+    // INTERACTIVE FLUID CURSOR REPLICATOR
+    const dot = document.getElementById('cursor-dot');
+    const ring = document.getElementById('cursor-ring');
+    let mX=0,mY=0, dX=0,dY=0, rX=0,rY=0;
+    document.addEventListener('mousemove', e => { mX=e.clientX; mY=e.clientY; });
+    (function loop() {
+      dX += (mX-dX)*0.45; dY += (mY-dY)*0.45;
+      rX += (mX-rX)*0.1;  rY += (mY-rY)*0.1;
+      dot.style.left=dX+'px'; dot.style.top=dY+'px';
+      ring.style.left=rX+'px'; ring.style.top=rY+'px';
+      requestAnimationFrame(loop);
+    })();
+
+    document.querySelectorAll('a,button').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('c-btn'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('c-btn'));
+    });
+    document.querySelectorAll('.card,tr,.section').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('c-card'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('c-card'));
+    });
+  </script>
+  <script src="notification-badge.js"></script>
+</body>
+</html>

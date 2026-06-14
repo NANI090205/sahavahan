@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <title>Verify Email</title>
+</head>
+<body>
+  <div id="container">
+    <h2>Verify Email</h2>
+
+    <label for="email">Email:</label><br />
+    <input id="email" type="email" placeholder="Email" required /><br /><br />
+
+    <label for="otp">OTP:</label><br />
+    <input id="otp" type="text" inputmode="numeric" placeholder="OTP" required /><br /><br />
+
+    <button onclick="verifyEmail()">Verify</button>
+
+    <div style="margin-top:12px;" id="msg"></div>
+  </div>
+
+  <script>
+    async function verifyEmail() {
+      const email = document.getElementById("email").value.trim();
+      const otp = document.getElementById("otp").value.trim();
+
+      const response = await fetch("/api/users/verify-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email,
+          otp
+        })
+      });
+
+      const data = await response.json();
+      document.getElementById("msg").innerText = data.message;
+
+      if (response.ok) {
+        // After verification, user can login
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 800);
+      }
+    }
+  </script>
+</body>
+</html>
+

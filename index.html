@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CarPooling</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+</head>
+<body>
+  <header>
+    <div id="head">
+        <h1>Saha<i>Vahan</i></h1>
+        <div id="login">
+            <a href="ridepublish.html">Publish a ride?</a>
+            <h2>Welcome, <span id="usernameDisplay"></span>!!! Your Unique Code: <strong id="codeDisplay"></strong></h2>
+            <p></p>
+        </div>
+    </div>
+</header>
+
+<div id="mainimg">
+  <img src="mainimg.jpg" width="100%" height="500px" alt="noimg">
+</div>
+
+  <div id="ridedetails">
+  <button onclick="window.location.href='ridepublish.html'">Publish Ride</button>
+  <button onclick="window.location.href='rides.html'">To book a ride</button>
+  <button onclick="window.location.href='dashboard.html'">For dashboard</button>
+  <button onclick="window.location.href='profile.html'">Profile</button>
+  </div>
+  <section class="info-section">
+    <div class="info-box">
+      <i class="fas fa-coins"></i>
+      <h3>Your pick of rides at low prices</h3>
+      <p>No matter where you are going, by bus or carpool, find the perfect ride from our wide range of destinations and routes at low prices.</p>
+    </div>
+    <div class="info-box">
+      <i class="fas fa-users"></i>
+      <h3>Trust who you travel with</h3>
+      <p>We get to know our members and partners by checking reviews, profiles and IDs so you can book your ride with confidence.</p>
+    </div>
+    <div class="info-box">
+      <i class="fas fa-bolt"></i>
+      <h3>Scroll, click, tap and go!</h3>
+      <p>Our simple app lets you book a ride near you in just minutes with great tech and ease.</p>
+    </div>
+  </section>
+  <section class="safety-section">
+    <div class="safety-img">
+      <img src="driving.jpg" alt="Booking Illustration">
+    </div>
+    <div class="safety-text">
+      <h2>Wanna go somewhere</h2>
+      <p>Book your ride using SahaVahan and avoid the heavy travelling charges</p>
+      <button onclick="window.location.href='rides.html'">Book your ride</button>
+    </div>
+  </section>
+  
+  <section class="recommend-section">
+    <h2>🧠 Recommended For You</h2>
+    <div id="recommendedRides">Loading...</div>
+  </section>
+
+  <button onclick="logout()">Logout</button>
+
+  <footer>
+    <main id="about">
+        <b>About Us-</b>
+        <form id="contact" action="contact.html">
+            <ol>
+                <button>Contact Us</button>
+            </ol>
+        </form>
+        
+        <form id="services" action="services.html">
+            <ol>
+                <button>Services</button>
+            </ol>
+        </form>
+    </main>
+    <h4> It was developed by ME </h4>
+    <b> <i> ©2025 SahaVahan.com </i></b>
+</footer>
+  <script>
+    const username = localStorage.getItem("username");
+    const uniqueCode = localStorage.getItem("uniqueCode");
+
+    if (!username || !uniqueCode) {
+      window.location.href = "login.html";
+    } else {
+      document.getElementById("usernameDisplay").textContent = username;
+      document.getElementById("codeDisplay").textContent = uniqueCode;
+    }
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+    
+    async function loadRecommendations(){
+      try{
+        const username = localStorage.getItem("username");
+        if(!username) return;
+
+        const response = await fetch(`/api/rides/recommend/${username}`);
+        if(!response.ok) return;
+        const rides = await response.json();
+        const container = document.getElementById("recommendedRides");
+        container.innerHTML = "";
+        if(!rides || rides.length===0){
+          container.innerHTML = '<p>No recommendations yet.</p>';
+          return;
+        }
+        rides.forEach(ride=>{
+          container.innerHTML += `\n            <div class="recommend-card">\n              <strong>${ride.source} → ${ride.destination}</strong><br/>\n              ₹${ride.price} &nbsp; • &nbsp; Driver: ${ride.username}\n            </div>`;
+        });
+      }catch(err){
+        console.error('Load recommendations error', err);
+      }
+    }
+
+    loadRecommendations();
+  </script>
+</body>
+</html>

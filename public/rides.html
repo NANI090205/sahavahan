@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Available Rides — SahaVahan</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4338CA">
+  <meta name="description" content="Find and book verified carpool rides across Andhra Pradesh. Smart matching, real-time availability." />
+
+  <!-- FONTS: matching homepage exactly -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    /* ═══════════════════════════════════════════════
+       DESIGN TOKENS — exact match to homepage
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main: #F7F8FC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-muted: #F0F2F8;
+      --primary: #4338CA;
+      --primary-light: #6366F1;
+      --primary-dim: rgba(67,56,202,0.07);
+      --accent: #0EA5E9;
+      --accent-dim: rgba(14,165,233,0.08);
+      --green: #059669;
+      --green-light: #10B981;
+      --green-dim: rgba(5,150,105,0.08);
+      --amber: #D97706;
+      --amber-light: #F59E0B;
+      --rose: #E11D48;
+      --text-main: #0D1117;
+      --text-muted: #5C6B82;
+      --border: #DDE3EE;
+      --border-hover: #B8C4D8;
+      --shadow-sm: 0 2px 8px rgba(13,17,23,0.05);
+      --shadow-md: 0 10px 30px rgba(13,17,23,0.09);
+      --shadow-lg: 0 24px 52px rgba(13,17,23,0.13);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.65;
+      cursor: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CUSTOM CURSOR — identical to homepage
+    ═══════════════════════════════════════════════ */
+    #cursor-dot {
+      position: fixed; width: 10px; height: 10px;
+      background: var(--primary); border-radius: 50%;
+      pointer-events: none; z-index: 99999;
+      transform: translate(-50%,-50%);
+      transition: background 0.18s, width 0.18s, height 0.18s, border-radius 0.18s;
+      mix-blend-mode: multiply;
+    }
+    #cursor-ring {
+      position: fixed; width: 36px; height: 36px;
+      border: 2px solid rgba(67,56,202,0.4); border-radius: 50%;
+      pointer-events: none; z-index: 99998;
+      transform: translate(-50%,-50%);
+      transition: width 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  height 0.22s cubic-bezier(0.34,1.56,0.64,1),
+                  border-color 0.2s, background 0.2s, opacity 0.2s;
+    }
+    body.c-btn  #cursor-dot  { width: 18px; height: 18px; background: var(--primary); }
+    body.c-btn  #cursor-ring { width: 52px; height: 52px; border-color: rgba(67,56,202,0.6); background: rgba(67,56,202,0.05); }
+    body.c-card #cursor-dot  { width: 14px; height: 14px; background: var(--accent); }
+    body.c-card #cursor-ring { width: 46px; height: 46px; border-color: rgba(14,165,233,0.45); }
+    body.c-text #cursor-dot  { width: 3px; height: 20px; border-radius: 2px; background: var(--primary); }
+    body.c-text #cursor-ring { opacity: 0; }
+
+    /* ═══════════════════════════════════════════════
+       ORBS
+    ═══════════════════════════════════════════════ */
+    .orb { position: fixed; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 640px; height: 640px; background: radial-gradient(circle,rgba(67,56,202,.12) 0%,transparent 70%); top:-100px; left:-140px; }
+    .orb-2 { width: 520px; height: 520px; background: radial-gradient(circle,rgba(14,165,233,.09) 0%,transparent 70%); top:40%; right:-90px; }
+    .orb-3 { width: 420px; height: 420px; background: radial-gradient(circle,rgba(5,150,105,.07) 0%,transparent 70%); bottom:8%; left:22%; }
+
+    /* ═══════════════════════════════════════════════
+       NAV — identical to homepage
+    ═══════════════════════════════════════════════ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 20px 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+    nav.scrolled {
+      background: rgba(255,255,255,0.9); backdrop-filter: blur(22px);
+      padding: 13px 52px; border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-logo-wrap {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; transition: transform 0.2s;
+    }
+    .nav-logo-wrap:hover { transform: scale(1.03); }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff; box-shadow: 0 4px 12px rgba(67,56,202,0.3);
+      flex-shrink: 0;
+    }
+    .nav-logo-text {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+      color: var(--text-main); letter-spacing: -0.3px;
+    }
+    .nav-logo-text span { color: var(--primary); }
+    .nav-links { display: flex; align-items: center; gap: 2px; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-body); font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted); text-decoration: none;
+      padding: 8px 15px; border-radius: 8px; transition: all 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: 5px; left: 50%; right: 50%;
+      height: 2px; background: var(--primary); border-radius: 2px;
+      transition: left 0.22s, right 0.22s;
+    }
+    .nav-links a:hover { color: var(--primary); background: var(--primary-dim); }
+    .nav-links a:hover::after { left: 15px; right: 15px; }
+    .nav-links a.active { color: var(--primary); background: var(--primary-dim); }
+    .nav-links a.active::after { left: 15px; right: 15px; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-user-pill {
+      display: flex; align-items: center; gap: 9px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 100px; padding: 5px 14px 5px 5px;
+      font-size: 13px; color: var(--text-muted); box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .nav-user-pill:hover { border-color: var(--primary-light); box-shadow: 0 0 0 3px var(--primary-dim); }
+    .nav-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .nav-avatar-name { color: var(--text-main); font-weight: 500; }
+    .btn-logout {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 13px; font-weight: 500;
+      padding: 7px 14px; border-radius: 8px; cursor: none;
+      font-family: var(--font-body); transition: all 0.2s;
+    }
+    .btn-logout:hover { color: var(--rose); border-color: #FECDD3; background: #FFF1F2; }
+
+    /* ═══════════════════════════════════════════════
+       PAGE LAYOUT
+    ═══════════════════════════════════════════════ */
+    .page-wrap {
+      position: relative; z-index: 1;
+      max-width: 1160px; margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       PAGE HERO STRIP
+    ═══════════════════════════════════════════════ */
+    .rides-hero {
+      position: relative;
+      padding: 120px 0 0;
+      text-align: left;
+      overflow: hidden;
+    }
+    .rides-hero-grid {
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(67,56,202,0.038) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67,56,202,0.038) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 95% 80% at 0% 50%, black 20%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 95% 80% at 0% 50%, black 20%, transparent 100%);
+      animation: gridDrift 22s linear infinite;
+    }
+    @keyframes gridDrift { from { background-position: 0 0; } to { background-position: 56px 56px; } }
+    .rides-hero > * { position: relative; z-index: 2; }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--primary-dim); border: 1px solid rgba(67,56,202,0.15);
+      border-radius: 100px; padding: 6px 18px;
+      font-size: 11.5px; font-weight: 600; letter-spacing: 1.6px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 18px;
+      animation: fadeUp 0.7s ease both;
+    }
+    .rides-hero-headline {
+      font-family: var(--font-display);
+      font-size: clamp(34px, 5vw, 58px);
+      font-weight: 800; line-height: 1.05; letter-spacing: -1.5px;
+      color: var(--text-main);
+      animation: fadeUp 0.7s 0.08s ease both;
+    }
+    .rides-hero-headline .hl-gradient {
+      background: linear-gradient(135deg, var(--primary) 0%, #818CF8 40%, var(--accent) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      background-size: 200% 200%; animation: gradientShift 5s ease infinite;
+    }
+    @keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .rides-hero-sub {
+      font-size: 15px; color: var(--text-muted); max-width: 500px;
+      margin-top: 12px; font-weight: 400; line-height: 1.7;
+      animation: fadeUp 0.7s 0.16s ease both;
+    }
+    .rides-hero-stats {
+      display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+      margin-top: 26px; padding-bottom: 32px;
+      animation: fadeUp 0.7s 0.24s ease both;
+    }
+    .rides-hero-stat {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 16px; box-shadow: var(--shadow-sm);
+    }
+    .rhs-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .rhs-icon.blue { background: var(--primary-dim); color: var(--primary); }
+    .rhs-icon.teal { background: var(--accent-dim); color: var(--accent); }
+    .rhs-icon.green { background: var(--green-dim); color: var(--green); }
+    .rhs-num { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-main); }
+    .rhs-label { font-size: 11.5px; color: var(--text-muted); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ═══════════════════════════════════════════════
+       SECTION LABELS
+    ═══════════════════════════════════════════════ */
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 10px;
+    }
+    .sh {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 2.8vw, 30px); font-weight: 700;
+      letter-spacing: -0.4px; line-height: 1.15; color: var(--text-main);
+    }
+    .sm { font-size: 14px; color: var(--text-muted); max-width: 480px; margin-top: 7px; }
+    .section-sep { height: 1px; background: var(--border); margin: 0; }
+
+    /* ═══════════════════════════════════════════════
+       SEARCH PANEL — glassmorphism
+    ═══════════════════════════════════════════════ */
+    .search-section { padding: 0 0 36px; }
+    .search-panel {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1.5px solid rgba(221,227,238,0.9);
+      border-radius: 22px;
+      padding: 28px 28px 22px;
+      box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.7) inset;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      position: relative; overflow: hidden;
+    }
+    .search-panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 22px 22px 0 0;
+    }
+    .search-panel:focus-within {
+      border-color: rgba(99,102,241,0.4);
+      box-shadow: var(--shadow-lg), 0 0 0 4px var(--primary-dim);
+    }
+    .search-panel-header { margin-bottom: 20px; }
+    .search-panel-title {
+      font-family: var(--font-display); font-size: 17px; font-weight: 700;
+      color: var(--text-main); display: flex; align-items: center; gap: 8px;
+    }
+    .search-panel-title i { color: var(--primary); font-size: 14px; }
+
+    .search-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 720px) { .search-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .search-grid { grid-template-columns: 1fr; } }
+
+    .search-field { position: relative; display: flex; flex-direction: column; gap: 5px; }
+    .search-field label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .search-field-inner { position: relative; display: flex; align-items: center; }
+    .search-field-icon {
+      position: absolute; left: 12px; color: var(--text-muted); font-size: 12px; pointer-events: none; z-index: 1;
+    }
+    .search-field input,
+    .search-field select {
+      width: 100%;
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 11px; padding: 11px 14px 11px 34px;
+      font-size: 13.5px; font-family: var(--font-body); color: var(--text-main);
+      outline: none; appearance: none; -webkit-appearance: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .search-field input:focus,
+    .search-field select:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim);
+      background: var(--bg-surface);
+    }
+    .search-field input::placeholder { color: var(--text-muted); }
+    .search-field select option { background: var(--bg-surface); color: var(--text-main); }
+    .search-field-caret {
+      position: absolute; right: 12px; pointer-events: none;
+      color: var(--text-muted); font-size: 10px; top: 50%; transform: translateY(-50%);
+    }
+
+    .filter-row {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      align-items: center; justify-content: space-between;
+      padding-top: 14px; border-top: 1px solid var(--border);
+    }
+    .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filter-chip {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 100px; padding: 7px 14px;
+      font-size: 12.5px; font-weight: 500; color: var(--text-muted);
+      cursor: none; transition: all 0.2s; white-space: nowrap;
+      position: relative; overflow: hidden;
+    }
+    .filter-chip input[type="checkbox"] {
+      position: absolute; opacity: 0; width: 0; height: 0;
+    }
+    .filter-chip:hover {
+      border-color: var(--border-hover); background: var(--bg-surface);
+      transform: translateY(-1px); box-shadow: var(--shadow-sm);
+    }
+    .filter-chip.active {
+      background: var(--primary-dim); border-color: rgba(67,56,202,0.3);
+      color: var(--primary); font-weight: 600;
+    }
+    .filter-chip i { font-size: 11px; }
+
+    .sort-field { position: relative; display: flex; align-items: center; gap: 7px; }
+    .sort-field select {
+      appearance: none; -webkit-appearance: none;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 30px 9px 12px;
+      font-size: 13px; font-family: var(--font-body); color: var(--text-main);
+      outline: none; cursor: none; transition: border-color 0.2s;
+      min-width: 180px;
+    }
+    .sort-field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+    .sort-caret {
+      position: absolute; right: 10px; pointer-events: none;
+      color: var(--text-muted); font-size: 10px;
+    }
+
+    .search-actions { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; font-size: 13.5px; font-weight: 600;
+      padding: 11px 22px; border-radius: 10px; border: none; cursor: none;
+      text-decoration: none; transition: all 0.25s; font-family: var(--font-body);
+      box-shadow: 0 4px 14px rgba(67,56,202,0.28); position: relative; overflow: hidden;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(67,56,202,0.42); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-surface); color: var(--text-main); font-size: 13.5px; font-weight: 500;
+      padding: 11px 22px; border-radius: 10px; border: 1px solid var(--border); cursor: none;
+      text-decoration: none; transition: all 0.2s; font-family: var(--font-body); box-shadow: var(--shadow-sm);
+    }
+    .btn-ghost:hover { background: var(--bg-surface-muted); border-color: var(--border-hover); transform: translateY(-1px); }
+
+    /* ═══════════════════════════════════════════════
+       RECOMMENDED TOP-PICK CARD
+    ═══════════════════════════════════════════════ */
+    #recommendedContainer { margin-bottom: 28px; }
+
+    .top-pick-card {
+      position: relative;
+      background: linear-gradient(145deg, #fff 0%, rgba(243,244,255,0.8) 100%);
+      border: 1.5px solid rgba(67,56,202,0.2);
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: var(--shadow-md), 0 0 0 4px rgba(67,56,202,0.04);
+      overflow: hidden;
+      transition: box-shadow 0.3s, transform 0.3s;
+    }
+    .top-pick-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg), 0 0 0 4px rgba(67,56,202,0.07);
+    }
+    .top-pick-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--primary), #818CF8, var(--accent));
+    }
+    .top-pick-badge {
+      position: absolute; top: 18px; right: 18px;
+      display: flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, var(--amber), var(--amber-light));
+      color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.8px;
+      padding: 5px 12px; border-radius: 100px;
+      box-shadow: 0 4px 14px rgba(217,119,6,0.35);
+      text-transform: uppercase;
+    }
+    .top-pick-layout {
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 22px; align-items: start;
+    }
+    @media (max-width: 700px) { .top-pick-layout { grid-template-columns: auto 1fr; } }
+    @media (max-width: 480px) { .top-pick-layout { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════════
+       DRIVER AVATAR BLOCK (shared)
+    ═══════════════════════════════════════════════ */
+    .driver-av-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .driver-av {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 2.5px solid rgba(67,56,202,0.2);
+      object-fit: cover;
+      box-shadow: 0 4px 14px rgba(67,56,202,0.15);
+      background: linear-gradient(135deg, var(--bg-surface-muted), var(--bg-main));
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .driver-av-fallback {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 20px; font-weight: 700; color: #fff;
+      border: 2.5px solid rgba(67,56,202,0.2);
+      box-shadow: 0 4px 14px rgba(67,56,202,0.15);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .top-pick-card:hover .driver-av,
+    .top-pick-card:hover .driver-av-fallback,
+    .ride-card-new:hover .driver-av,
+    .ride-card-new:hover .driver-av-fallback {
+      transform: scale(1.06) rotate(3deg);
+    }
+    .verified-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--green-dim); border: 1px solid rgba(5,150,105,0.2);
+      color: var(--green); font-size: 10px; font-weight: 700;
+      border-radius: 100px; padding: 3px 8px; white-space: nowrap;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RIDE DETAILS BODY (shared layout)
+    ═══════════════════════════════════════════════ */
+    .rc-driver-name {
+      font-family: var(--font-display); font-size: 17px; font-weight: 700;
+      color: var(--text-main); margin-bottom: 4px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .rc-rating {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 600; color: var(--amber-light);
+    }
+    .rc-rating i { font-size: 10px; }
+    .rc-trust {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--primary-dim); color: var(--primary);
+      font-size: 11px; font-weight: 700; border-radius: 100px; padding: 2px 8px;
+    }
+
+    .rc-route-line {
+      display: flex; align-items: center; gap: 10px;
+      margin: 12px 0 10px; flex-wrap: wrap;
+    }
+    .rc-city-name {
+      font-family: var(--font-display); font-size: 15px; font-weight: 700;
+      color: var(--text-main);
+    }
+    .rc-route-arrow {
+      flex: 1; min-width: 30px; display: flex; align-items: center; gap: 0;
+      position: relative; height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 2px;
+    }
+    .rc-route-arrow::after {
+      content: '▶'; position: absolute; right: -6px; top: 50%;
+      transform: translateY(-50%); font-size: 9px; color: var(--accent);
+    }
+
+    .stops-expandable { margin-top: -4px; margin-bottom: 8px; }
+    .stops-expandable summary {
+      cursor: none; color: var(--primary); font-size: 12px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 5px; list-style: none;
+      outline: none;
+    }
+    .stops-expandable summary::-webkit-details-marker { display: none; }
+    .stops-expandable summary:hover { text-decoration: underline; }
+    .stops-chain {
+      margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .stop-pill {
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 10px; font-size: 11.5px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .stop-pill i { font-size: 9px; color: var(--primary); }
+
+    .rc-meta-row {
+      display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0;
+    }
+    .rc-meta-chip {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12.5px; color: var(--text-muted); font-weight: 500;
+    }
+    .rc-meta-chip i { font-size: 11px; color: var(--primary-light); }
+
+    .pref-chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+    .pref-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 10px;
+      font-size: 11.5px; color: var(--text-muted); font-weight: 500;
+    }
+
+    .vehicle-row {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px; margin: 10px 0;
+    }
+    .vehicle-chip {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-muted); font-weight: 500;
+    }
+    .vehicle-chip i { font-size: 11px; color: var(--accent); }
+    .vehicle-chip strong { color: var(--text-main); font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════
+       PRICE & BOOKING SECTION (shared)
+    ═══════════════════════════════════════════════ */
+    .booking-col {
+      display: flex; flex-direction: column; gap: 12px;
+      min-width: 160px; align-items: flex-end;
+    }
+    @media (max-width: 700px) { .booking-col { align-items: flex-start; } }
+
+    .price-display {
+      text-align: right;
+    }
+    @media (max-width: 700px) { .price-display { text-align: left; } }
+    .price-display .price-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .price-display .price-value {
+      font-family: var(--font-display); font-size: 32px; font-weight: 800;
+      color: var(--primary); line-height: 1; letter-spacing: -0.5px;
+    }
+    .price-display .price-sub { font-size: 11.5px; color: var(--text-muted); }
+
+    .seats-selector {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg-surface-muted); border: 1px solid var(--border);
+      border-radius: 10px; padding: 6px 10px;
+    }
+    .seats-selector label { font-size: 12px; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+    .seats-selector input {
+      width: 56px; background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 7px; padding: 6px 8px; font-size: 13px; font-family: var(--font-body);
+      color: var(--text-main); outline: none; text-align: center;
+      transition: border-color 0.2s;
+    }
+    .seats-selector input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+
+    .seats-remaining {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600;
+    }
+    .seats-remaining.low { color: var(--rose); }
+    .seats-remaining.ok { color: var(--green); }
+    .seats-remaining i { font-size: 10px; }
+
+    .action-row {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+      padding-top: 14px; border-top: 1px solid var(--border);
+    }
+    /* action button shared styles */
+    .act-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 13px; font-weight: 600; font-family: var(--font-body);
+      border-radius: 10px; padding: 10px 16px; border: none; cursor: none;
+      transition: all 0.22s; text-decoration: none; white-space: nowrap;
+      position: relative; overflow: hidden;
+    }
+    .act-btn i { font-size: 12px; }
+    .act-btn-book {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; box-shadow: 0 4px 14px rgba(67,56,202,0.28);
+    }
+    .act-btn-book:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(67,56,202,0.42); }
+    .act-btn-call {
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      color: #fff; box-shadow: 0 4px 14px rgba(5,150,105,0.22);
+    }
+    .act-btn-call:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(5,150,105,0.35); }
+    .act-btn-whatsapp {
+      background: #25D366; color: #fff;
+      box-shadow: 0 4px 14px rgba(37,211,102,0.25);
+    }
+    .act-btn-whatsapp:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(37,211,102,0.4); }
+    .act-btn-ghost {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      color: var(--text-muted); box-shadow: var(--shadow-sm);
+    }
+    .act-btn-ghost:hover { background: var(--bg-surface-muted); border-color: var(--border-hover); transform: translateY(-1px); }
+    .act-btn-waitlist {
+      background: linear-gradient(135deg, var(--amber), var(--amber-light));
+      color: #fff; box-shadow: 0 4px 14px rgba(217,119,6,0.25);
+    }
+    .act-btn-waitlist:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(217,119,6,0.38); }
+
+    /* ═══════════════════════════════════════════════
+       STATUS BADGE (shared)
+    ═══════════════════════════════════════════════ */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 100px; padding: 4px 11px; font-size: 11px; font-weight: 700;
+    }
+    .status-pill .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-scheduled { background: rgba(245,158,11,0.1); color: #92400E; border: 1px solid rgba(245,158,11,0.2); }
+    .status-scheduled .status-dot { background: var(--amber-light); }
+    .status-inprogress { background: rgba(14,165,233,0.1); color: #075985; border: 1px solid rgba(14,165,233,0.2); }
+    .status-inprogress .status-dot { background: var(--accent); animation: pulseDot 1.6s infinite; }
+    .status-completed { background: var(--bg-surface-muted); color: var(--text-muted); border: 1px solid var(--border); }
+    .status-completed .status-dot { background: var(--border-hover); }
+    @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.6);opacity:0.5} }
+
+    /* ═══════════════════════════════════════════════
+       REGULAR RIDE CARDS
+    ═══════════════════════════════════════════════ */
+    .rides-section { margin-top: 4px; }
+    .rides-grid { display: flex; flex-direction: column; gap: 14px; }
+
+    .ride-card-new {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.34,1.1,0.64,1);
+    }
+    .ride-card-new::before {
+      content:''; position:absolute; top:-60%; left:-80%; width:50%; height:220%;
+      background: linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.5) 50%,transparent 65%);
+      transform: skewX(-12deg); transition: left 0.55s ease; pointer-events: none;
+    }
+    .ride-card-new:hover::before { left: 145%; }
+    .ride-card-new::after {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:2.5px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transform: scaleX(0); transform-origin: left; transition: transform 0.32s;
+    }
+    .ride-card-new:hover::after { transform: scaleX(1); }
+    .ride-card-new:hover {
+      transform: translateY(-4px);
+      border-color: rgba(67,56,202,0.25);
+      box-shadow: var(--shadow-md);
+    }
+
+    .rc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .rc-header-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .rc-header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+
+    .rc-badges-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+    .match-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg,rgba(67,56,202,0.1),rgba(14,165,233,0.08));
+      border: 1px solid rgba(67,56,202,0.15);
+      color: var(--primary); font-size: 11px; font-weight: 700;
+      border-radius: 100px; padding: 3px 9px;
+    }
+
+    .rc-body { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: start; }
+    @media (max-width: 580px) { .rc-body { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════════ */
+    .empty-state {
+      text-align: center; padding: 70px 24px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 20px; box-shadow: var(--shadow-sm);
+    }
+    .empty-state-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: var(--primary-dim); display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: var(--primary); margin: 0 auto 20px;
+    }
+    .empty-state h3 {
+      font-family: var(--font-display); font-size: 22px; font-weight: 700;
+      color: var(--text-main); margin-bottom: 8px;
+    }
+    .empty-state p { font-size: 14px; color: var(--text-muted); max-width: 340px; margin: 0 auto 22px; line-height: 1.65; }
+
+    /* ═══════════════════════════════════════════════
+       BILL CARD (booking confirmation)
+    ═══════════════════════════════════════════════ */
+    #billCard {
+      display: none;
+      background: linear-gradient(135deg, rgba(5,150,105,0.06), rgba(16,185,129,0.03));
+      border: 1.5px solid rgba(5,150,105,0.2);
+      border-radius: 18px; padding: 28px;
+      margin-top: 24px; box-shadow: var(--shadow-md);
+      animation: fadeUp 0.4s ease both;
+    }
+    #billCard h3 {
+      font-family: var(--font-display); font-size: 22px; font-weight: 800;
+      color: var(--green); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #billCard p {
+      font-size: 14px; color: var(--text-muted); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    #billCard p strong { color: var(--text-main); font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════
+       SECTION REVEAL
+    ═══════════════════════════════════════════════ */
+    .reveal { opacity: 0; transform: translateY(22px); transition: all 0.65s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ═══════════════════════════════════════════════
+       RIPPLE
+    ═══════════════════════════════════════════════ */
+    .ripple-host { position: relative; overflow: hidden; }
+    .ripple-circle {
+      position: absolute; border-radius: 50%;
+      background: rgba(67,56,202,0.14); transform: scale(0);
+      animation: rippleOut 0.55s linear; pointer-events: none;
+    }
+    @keyframes rippleOut { to { transform: scale(4); opacity: 0; } }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER — identical to homepage
+    ═══════════════════════════════════════════════ */
+    footer { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 56px 0 24px; position: relative; z-index: 1; }
+    .si { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 44px; margin-bottom: 32px; }
+    @media (max-width: 760px) { .footer-top { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .footer-top { grid-template-columns: 1fr; } }
+    .footer-logo { font-family: var(--font-display); font-size: 21px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; }
+    .footer-logo span { color: var(--primary); }
+    .footer-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; max-width: 255px; }
+    .footer-col-title { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-main); margin-bottom: 13px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .footer-links a { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color 0.2s, padding-left 0.2s; }
+    .footer-links a:hover { color: var(--primary); padding-left: 4px; }
+    .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+
+    .dev-credit { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 22px 0; text-align: center; position: relative; z-index: 1; }
+    .dev-credit-inner { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text-muted); font-family: var(--font-body); }
+    .dev-name { font-family: var(--font-display); font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .dev-heart { color: #E11D48; animation: heartbeat 1.5s ease-in-out infinite; display: inline-block; }
+    @keyframes heartbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.3)} }
+
+    /* ═══════════════════════════════════════════════
+       PWA INSTALL
+    ═══════════════════════════════════════════════ */
+    #installBtn {
+      display: none; position: fixed; right: 20px; bottom: 20px; z-index: 9999;
+      padding: 12px 18px; border: none; border-radius: 14px;
+      background: var(--primary); color: #fff; font-weight: 700;
+      font-family: var(--font-body); font-size: 14px;
+      box-shadow: 0 6px 18px rgba(67,56,202,0.35); cursor: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       MOBILE NAV HIDE
+    ═══════════════════════════════════════════════ */
+    @media (max-width: 860px) {
+      nav { padding: 14px 20px; }
+      nav.scrolled { padding: 10px 20px; }
+      .nav-links { display: none; }
+      .top-pick-layout { grid-template-columns: 1fr; }
+      .booking-col { align-items: flex-start; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,*::before,*::after { animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       LOADING SKELETON
+    ═══════════════════════════════════════════════ */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-surface-muted) 25%, rgba(240,242,248,0.5) 50%, var(--bg-surface-muted) 75%);
+      background-size: 400% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+    .skeleton-card {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 24px; box-shadow: var(--shadow-sm);
+    }
+    .sk-line { height: 14px; margin-bottom: 10px; }
+    .sk-avatar { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <!-- CURSOR -->
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+
+  <!-- ORBS -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- ═══════════════ NAV ═══════════════ -->
+  <nav id="main-nav">
+    <a href="index.html" class="nav-logo-wrap" aria-label="SahaVahan Home">
+      <div class="nav-logo-icon" style="background:transparent;box-shadow:none;">
+        <img src="/images/logo.png" alt="" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;" />
+      </div>
+      <div class="nav-logo-text">Saha<span>Vahan</span></div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="ridepublish.html"><i class="fa-solid fa-paper-plane" style="font-size:11px;margin-right:5px;"></i>Publish Ride</a></li>
+      <li><a href="rides.html" class="active"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
+      <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
+      <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="nav-user-pill">
+        <div class="nav-avatar" id="nav-avatar">RK</div>
+        <span class="nav-avatar-name" id="nav-user-name">Rahul K.</span>
+      </div>
+      <button class="btn-logout ripple-host" onclick="logout()"><i class="fa-solid fa-right-from-bracket" style="font-size:11px;"></i> Sign out</button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════ PAGE CONTENT ═══════════════ -->
+  <div class="page-wrap">
+
+    <!-- HERO STRIP -->
+    <div class="rides-hero">
+      <div class="rides-hero-grid"></div>
+      <div class="hero-eyebrow"><i class="fa-solid fa-circle-dot fa-xs"></i> Live Availability</div>
+      <h1 class="rides-hero-headline">
+        Find your <span class="hl-gradient">perfect ride.</span>
+      </h1>
+      <p class="rides-hero-sub">Browse verified seats on routes that match your schedule. Smart ranking puts the best options first.</p>
+      <div class="rides-hero-stats" id="heroStats">
+        <div class="rides-hero-stat">
+          <div class="rhs-icon blue"><i class="fa-solid fa-car"></i></div>
+          <div>
+            <div class="rhs-num" id="statSeats">—</div>
+            <div class="rhs-label">Seats Available</div>
+          </div>
+        </div>
+        <div class="rides-hero-stat">
+          <div class="rhs-icon teal"><i class="fa-solid fa-shield-halved"></i></div>
+          <div>
+            <div class="rhs-num">100%</div>
+            <div class="rhs-label">Verified Drivers</div>
+          </div>
+        </div>
+        <div class="rides-hero-stat">
+          <div class="rhs-icon green"><i class="fa-solid fa-star"></i></div>
+          <div>
+            <div class="rhs-num">4.8★</div>
+            <div class="rhs-label">Avg. Rating</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ SEARCH PANEL ═══════════════ -->
+    <section class="search-section">
+      <div class="search-panel" id="searchPanel">
+        <div class="search-panel-header">
+          <div class="search-panel-title">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            Search &amp; Filter Rides
+          </div>
+        </div>
+
+        <div class="search-grid">
+          <div class="search-field">
+            <label>Pickup Point</label>
+            <div class="search-field-inner">
+              <i class="fa-solid fa-location-dot search-field-icon"></i>
+              <select id="pickupSearch" onchange="searchRides()">
+                <option value="">All Pickup Points</option>
+              </select>
+              <i class="fa-solid fa-chevron-down search-field-caret"></i>
+            </div>
+          </div>
+
+          <div class="search-field">
+            <label>Drop Point</label>
+            <div class="search-field-inner">
+              <i class="fa-solid fa-flag-checkered search-field-icon"></i>
+              <select id="dropSearch" onchange="searchRides()">
+                <option value="">All Destinations</option>
+                <option value="Ameerpet Metro">Ameerpet Metro</option>
+                <option value="KPHB Metro">KPHB Metro</option>
+                <option value="Secunderabad">Secunderabad</option>
+              </select>
+              <i class="fa-solid fa-chevron-down search-field-caret"></i>
+            </div>
+          </div>
+
+          <div class="search-field">
+            <label>Date</label>
+            <div class="search-field-inner">
+              <i class="fa-solid fa-calendar-day search-field-icon"></i>
+              <input type="date" id="dateSearch" style="min-width:160px;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <div class="filter-chips" id="filterChips">
+            <label class="filter-chip ripple-host" id="chip-verified">
+              <input type="checkbox" id="verifiedOnly" onchange="toggleChip('chip-verified'); searchRides();" />
+              <i class="fa-solid fa-shield-halved"></i> Verified Only
+            </label>
+            <label class="filter-chip ripple-host" id="chip-ac">
+              <input type="checkbox" id="acRequired" onchange="toggleChip('chip-ac'); searchRides();" />
+              <i class="fa-solid fa-snowflake"></i> AC
+            </label>
+            <label class="filter-chip ripple-host" id="chip-women">
+              <input type="checkbox" id="womenOnlyRequired" onchange="toggleChip('chip-women'); searchRides();" />
+              <i class="fa-solid fa-venus"></i> Women Only
+            </label>
+            <label class="filter-chip ripple-host" id="chip-pets">
+              <input type="checkbox" id="petsAllowedRequired" onchange="toggleChip('chip-pets'); searchRides();" />
+              <i class="fa-solid fa-paw"></i> Pets Allowed
+            </label>
+            <label class="filter-chip ripple-host" id="chip-luggage">
+              <input type="checkbox" id="luggageAllowedRequired" onchange="toggleChip('chip-luggage'); searchRides();" />
+              <i class="fa-solid fa-suitcase"></i> Luggage OK
+            </label>
+          </div>
+
+          <div class="sort-field">
+            <i class="fa-solid fa-arrow-up-wide-short" style="color:var(--text-muted);font-size:12px;"></i>
+            <select id="sortSelect" onchange="sortRides()">
+              <option value="">Sort By</option>
+              <option value="priceLow">Price: Low → High</option>
+              <option value="priceHigh">Price: High → Low</option>
+              <option value="date">Date: Earliest First</option>
+              <option value="seats">Most Seats Available</option>
+            </select>
+            <i class="fa-solid fa-chevron-down sort-caret"></i>
+          </div>
+        </div>
+
+        <div class="search-actions">
+          <button class="btn-primary ripple-host" onclick="searchRides()">
+            <i class="fa-solid fa-magnifying-glass"></i> Search Rides
+          </button>
+          <button class="btn-ghost ripple-host" onclick="resetSearch()">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ RECOMMENDED ═══════════════ -->
+    <div id="recommendedContainer"></div>
+
+    <!-- ═══════════════ RIDES LIST ═══════════════ -->
+    <section class="rides-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="eyebrow"><i class="fa-solid fa-list fa-xs"></i> All Rides</div>
+          <h2 class="sh" id="ridesHeading">Available Rides</h2>
+        </div>
+        <div id="ridesCount" style="font-size:13px;color:var(--text-muted);"></div>
+      </div>
+      <div id="ridesContainer" class="rides-grid"></div>
+    </section>
+
+    <!-- BOOKING CONFIRMATION -->
+    <div id="billCard"></div>
+
+  </div><!-- /page-wrap -->
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer>
+    <div class="si">
+      <div class="footer-top">
+        <div>
+          <div class="footer-logo">Saha<span>Vahan</span></div>
+          <p class="footer-desc">Smart carpooling for Andhra Pradesh and beyond. Move together, save more.</p>
+        </div>
+        <div>
+          <div class="footer-col-title">Platform</div>
+          <ul class="footer-links">
+            <li><a href="rides.html">Find a Ride</a></li>
+            <li><a href="ridepublish.html">Publish a Ride</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="leaderboard.html">Leaderboard</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Company</div>
+          <ul class="footer-links">
+            <li><a href="contact.html">Contact Us</a></li>
+            <li><a href="services.html">Services</a></li>
+            <li><a href="aboutus.html">About Us</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Legal</div>
+          <ul class="footer-links">
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Safety Guide</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 SahaVahan. All rights reserved.</span>
+        <div style="display:flex;gap:16px;font-size:16px;">
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-x-twitter"></i></a>
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-instagram"></i></a>
+          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-linkedin"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <div class="dev-credit">
+    <div class="dev-credit-inner">
+      <i class="fa-solid fa-code" style="color:var(--primary);font-size:13px;"></i>
+      Developed <span class="dev-heart">♥</span> by
+      <span class="dev-name">Venkata Jagapathi Babu K</span>
+    </div>
+  </div>
+
+  <button id="installBtn" onclick="tryInstall()">📱 Install App</button>
+
+  <!-- ═══════════════════════════════════════════════
+       SCRIPTS — ALL ORIGINAL JS PRESERVED EXACTLY
+  ═══════════════════════════════════════════════ -->
+  <script>
+    // ── Nav hydration ──────────────────────────────────
+    const username = localStorage.getItem("username") || "Rahul K.";
+    const userCodeNav = localStorage.getItem("uniqueCode") || "SV-984A-2026";
+    const initialsNav = username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    document.getElementById("nav-avatar").textContent = initialsNav;
+    document.getElementById("nav-user-name").textContent = username;
+    function logout(){ localStorage.clear(); window.location.href="login.html"; }
+
+    // Nav scroll
+    const nav = document.getElementById("main-nav");
+    window.addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 40), { passive: true });
+
+    // ── Custom cursor ──────────────────────────────────
+    const dot  = document.getElementById('cursor-dot');
+    const ring = document.getElementById('cursor-ring');
+    let mX=0,mY=0, dX=0,dY=0, rX=0,rY=0;
+    document.addEventListener('mousemove', e => { mX=e.clientX; mY=e.clientY; });
+    (function loop(){
+      dX += (mX-dX)*0.45; dY += (mY-dY)*0.45;
+      rX += (mX-rX)*0.1;  rY += (mY-rY)*0.1;
+      dot.style.left=dX+'px';  dot.style.top=dY+'px';
+      ring.style.left=rX+'px'; ring.style.top=rY+'px';
+      requestAnimationFrame(loop);
+    })();
+    const addCursorClass = (els, cls) => els.forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add(cls));
+      el.addEventListener('mouseleave', () => document.body.classList.remove(cls));
+    });
+    addCursorClass(document.querySelectorAll('a,button,.act-btn,.btn-primary,.btn-ghost,.btn-logout,.filter-chip'), 'c-btn');
+    addCursorClass(document.querySelectorAll('.ride-card-new,.top-pick-card'), 'c-card');
+    addCursorClass(document.querySelectorAll('input[type="text"],input[type="date"],select'), 'c-text');
+
+    // ── Ripple ──────────────────────────────────────────
+    function addRipple(el, e){
+      const r=el.getBoundingClientRect();
+      const sz=Math.max(r.width,r.height)*1.5;
+      const sp=document.createElement('span');
+      sp.className='ripple-circle';
+      sp.style.cssText=`width:${sz}px;height:${sz}px;left:${e.clientX-r.left-sz/2}px;top:${e.clientY-r.top-sz/2}px;`;
+      el.appendChild(sp); setTimeout(()=>sp.remove(),600);
+    }
+    document.addEventListener('click', e => {
+      const host = e.target.closest('.ripple-host');
+      if(host) addRipple(host, e);
+    });
+
+    // ── Filter chip toggle ──────────────────────────────
+    function toggleChip(id){
+      const chip = document.getElementById(id);
+      if(!chip) return;
+      const cb = chip.querySelector('input[type="checkbox"]');
+      chip.classList.toggle('active', cb && cb.checked);
+    }
+
+    // ── Scroll reveal ───────────────────────────────────
+    const ro = new IntersectionObserver(entries => entries.forEach(e => {
+      if(e.isIntersecting){ e.target.classList.add('visible'); ro.unobserve(e.target); }
+    }), { threshold: 0.06 });
+    document.querySelectorAll('.reveal').forEach(r => ro.observe(r));
+  </script>
+
+  <script>
+    // ═══════════════════════════════════════════════
+    // ALL ORIGINAL JAVASCRIPT — PRESERVED EXACTLY
+    // ═══════════════════════════════════════════════
+    const userName = localStorage.getItem('username');
+    const userCode = localStorage.getItem('uniqueCode');
+    let currentUserLat = null;
+    let currentUserLng = null;
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+        + Math.cos(lat1 * Math.PI / 180)
+        * Math.cos(lat2 * Math.PI / 180)
+        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function getRideDistance(ride) {
+      if (currentUserLat == null || currentUserLng == null || ride.sourceLat == null || ride.sourceLng == null) return null;
+      return calculateDistance(currentUserLat, currentUserLng, ride.sourceLat, ride.sourceLng);
+    }
+
+    function getDistanceLabel(ride) {
+      const distance = getRideDistance(ride);
+      if (distance == null) return "";
+      return `<div class="rc-meta-chip"><i class="fa-solid fa-location-dot"></i> ${distance.toFixed(1)} km away</div>`;
+    }
+
+    function sortByDistance(rides) {
+      if (currentUserLat == null || currentUserLng == null) return rides;
+      return rides.sort((a, b) => {
+        const distanceA = getRideDistance(a);
+        const distanceB = getRideDistance(b);
+        if (distanceA == null && distanceB == null) return 0;
+        if (distanceA == null) return 1;
+        if (distanceB == null) return -1;
+        return distanceA - distanceB;
+      });
+    }
+
+    async function searchRides() {
+      const source = document.getElementById("pickupSearch").value;
+      const destination = document.getElementById("dropSearch").value;
+      const date = document.getElementById("dateSearch").value;
+
+      let allRides = [];
+      const username = localStorage.getItem('username');
+
+      if (source && destination) {
+        try {
+          const smartRes = await fetch('/api/recommendations/smart-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, source, destination })
+          });
+          if (smartRes.ok) allRides = await smartRes.json();
+        } catch (e) { console.error('Smart search error:', e); }
+      }
+
+      if (!allRides || allRides.length === 0) {
+        const response = await fetch("/api/rides/all");
+        allRides = await response.json();
+      }
+
+      const filtered = allRides.filter((ride) => {
+        const destinationMatch = !destination || ride.destination === destination;
+        const dateMatch = !date || ride.date === date;
+        const sourceMatch = !source ||
+          (Array.isArray(ride.stops)
+            ? ride.stops.some(s => s && s.name === source)
+            : ride.source === source);
+        return sourceMatch && destinationMatch && dateMatch;
+      });
+
+      const verifiedOnly = !!document.getElementById('verifiedOnly')?.checked;
+      let verifiedFiltered = verifiedOnly ? filtered.filter((r) => !!r.isVerifiedDriver) : filtered;
+
+      const acRequired         = !!document.getElementById('acRequired')?.checked;
+      const womenOnlyRequired  = !!document.getElementById('womenOnlyRequired')?.checked;
+      const petsAllowedRequired= !!document.getElementById('petsAllowedRequired')?.checked;
+      const luggageAllowedRequired = !!document.getElementById('luggageAllowedRequired')?.checked;
+
+      verifiedFiltered = verifiedFiltered.filter((ride) => {
+        const prefs = ride.preferences || {};
+        if (acRequired         && prefs.acAvailable !== true)  return false;
+        if (womenOnlyRequired  && prefs.womenOnly !== true)    return false;
+        if (petsAllowedRequired&& prefs.petsAllowed !== true)  return false;
+        if (luggageAllowedRequired && prefs.luggageAllowed !== true) return false;
+        return true;
+      });
+
+      await displayRidesWithRecommendation(sortByDistance(verifiedFiltered));
+    }
+
+    function resetSearch() {
+      const pickupEl = document.getElementById("pickupSearch");
+      const dropEl   = document.getElementById("dropSearch");
+      const dateEl   = document.getElementById("dateSearch");
+      if (pickupEl) pickupEl.value = "";
+      if (dropEl)   dropEl.value   = "";
+      if (dateEl)   dateEl.value   = "";
+      searchRides();
+    }
+
+    // ── Helper: build status pill ────────────────────
+    function buildStatusPill(status){
+      if (!status) status = 'Scheduled';
+      const st = String(status);
+      if (st === 'Scheduled') return `<span class="status-pill status-scheduled"><span class="status-dot"></span>Scheduled</span>`;
+      if (st === 'In Progress') return `<span class="status-pill status-inprogress"><span class="status-dot"></span>In Progress</span>`;
+      if (st === 'Completed')   return `<span class="status-pill status-completed"><span class="status-dot"></span>Completed</span>`;
+      return `<span class="status-pill status-scheduled"><span class="status-dot"></span>${st}</span>`;
+    }
+
+    // ── Helper: driver badge ─────────────────────────
+    function getDriverBadge(rating) {
+      if (rating >= 4.8) return '🏆 Top Driver';
+      if (rating >= 4)   return '⭐ Recommended';
+      return '';
+    }
+
+    // ── Helper: route stops HTML ──────────────────────
+    function buildRouteHtml(ride){
+      const hasStops = Array.isArray(ride.stops) && ride.stops.length > 0;
+      const stopsNames = [];
+      if (ride?.source) stopsNames.push(ride.source);
+      if (hasStops) {
+        for (const s of ride.stops) {
+          if (s?.name && s.name !== ride.source && s.name !== ride.destination) stopsNames.push(s.name);
+        }
+      }
+      if (ride?.destination) stopsNames.push(ride.destination);
+
+      const first = ride.source || stopsNames[0] || '—';
+      const last  = ride.destination || stopsNames[stopsNames.length-1] || '—';
+
+      if (!hasStops || ride.stops.length <= 2) {
+        return `<div class="rc-route-line">
+          <span class="rc-city-name">${first}</span>
+          <div class="rc-route-arrow"></div>
+          <span class="rc-city-name">${last}</span>
+        </div>`;
+      }
+
+      const stopPills = stopsNames.map(n => `<div class="stop-pill"><i class="fa-solid fa-circle-dot"></i>${n}</div>`).join('');
+      return `<div class="rc-route-line">
+        <span class="rc-city-name">${first}</span>
+        <div class="rc-route-arrow"></div>
+        <span class="rc-city-name">${last}</span>
+      </div>
+      <details class="stops-expandable">
+        <summary><i class="fa-solid fa-chevron-down fa-xs"></i> View all ${stopsNames.length} stops</summary>
+        <div class="stops-chain">${stopPills}</div>
+      </details>`;
+    }
+
+    // ── Helper: pref chips HTML ──────────────────────
+    function buildPrefChips(prefs){
+      const chips = [];
+      if (prefs.acAvailable)   chips.push(`<span class="pref-chip">❄️ AC</span>`);
+      if (prefs.musicAllowed)  chips.push(`<span class="pref-chip">🎵 Music</span>`);
+      if (prefs.smokingAllowed)chips.push(`<span class="pref-chip">🚬 Smoking</span>`);
+      if (prefs.petsAllowed)   chips.push(`<span class="pref-chip">🐾 Pets</span>`);
+      if (prefs.luggageAllowed)chips.push(`<span class="pref-chip">🧳 Luggage</span>`);
+      if (prefs.womenOnly)     chips.push(`<span class="pref-chip">👩 Women Only</span>`);
+      return chips.length ? `<div class="pref-chips">${chips.join('')}</div>` : '';
+    }
+
+    // ── displayRidesWithRecommendation ───────────────
+    async function displayRidesWithRecommendation(rides) {
+      const recommendedContainer = document.getElementById('recommendedContainer');
+      const ridesHeading         = document.getElementById('ridesHeading');
+      const ridesCount           = document.getElementById('ridesCount');
+      const statSeats            = document.getElementById('statSeats');
+
+      if (statSeats) {
+        const totalSeats = (rides||[]).reduce((s,r)=>s+Number(r.seats||0),0);
+        statSeats.textContent = totalSeats + '+';
+      }
+
+      if (!rides || rides.length === 0) {
+        recommendedContainer.style.display = 'none';
+        if(ridesHeading) ridesHeading.textContent = 'No Rides Found';
+        if(ridesCount)   ridesCount.textContent   = '';
+        document.getElementById('ridesContainer').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon"><i class="fa-solid fa-car-side"></i></div>
+            <h3>No rides match your filters</h3>
+            <p>Try adjusting your pickup, destination, or date — or reset all filters to see everything available.</p>
+            <button class="btn-primary ripple-host" onclick="resetSearch()"><i class="fa-solid fa-rotate-left"></i> Reset Filters</button>
+          </div>`;
+        return;
+      }
+
+      if(ridesCount) ridesCount.textContent = `${rides.length} ride${rides.length !== 1 ? 's' : ''} found`;
+      if(ridesHeading) ridesHeading.textContent = 'Available Rides';
+
+      const topRide  = rides[0];
+      const restRides= rides.slice(1);
+
+      try {
+        let topRatingData = { rating: 0, reviews: 0 };
+        try {
+          const ratingRes = await fetch(`/api/reviews/driver-score/${encodeURIComponent(topRide.username)}`);
+          if (ratingRes.ok) topRatingData = await ratingRes.json();
+        } catch(e) { console.error('Rating fetch error:', e); }
+
+        let topPhoneData = { phoneNumber: "" };
+        try {
+          const phoneRes = await fetch(`/api/users/phone/${encodeURIComponent(topRide.username)}`);
+          if (phoneRes.ok) topPhoneData = await phoneRes.json();
+        } catch(e) { console.error('Phone fetch error:', e); }
+
+        const driverPhone = topPhoneData.phoneNumber || topRide.phoneNumber || "";
+        topRide.phoneNumber = driverPhone;
+        const cleanPhone   = driverPhone ? driverPhone.replace(/\D/g,'') : "";
+        const whatsappPhone= cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+        const whatsappUrl  = cleanPhone
+          ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hi ${topRide.username}, I would like to book your ride from ${topRide.source} to ${topRide.destination}.`)}`
+          : "#";
+
+        let vehicle = null;
+        try {
+          const vehicleRes = await fetch(`/api/vehicles/${encodeURIComponent(topRide.username)}`);
+          if (vehicleRes.ok) vehicle = await vehicleRes.json();
+        } catch(e) { console.error('Vehicle fetch error:', e); }
+
+        const vehicleModel  = vehicle?.vehicleModel  || 'N/A';
+        const vehicleColor  = vehicle?.vehicleColor  || 'N/A';
+        const vehicleNumber = vehicle?.vehicleNumber || 'N/A';
+        const acLabel       = vehicle?.acAvailable   ? 'AC Available' : 'Non AC';
+        const trustScore    = topRide.trustScore ?? 100;
+        const isVerified    = !!topRide.isVerifiedDriver;
+        const matchScore    = topRide.matchScore ?? topRide.score ?? null;
+        const availableSeats= Number(topRide.seats ?? 0);
+        const prefs         = topRide.preferences || {};
+
+        recommendedContainer.innerHTML = `
+          <div>
+            <div class="eyebrow" style="margin-bottom:10px;"><i class="fa-solid fa-trophy fa-xs"></i> Top Pick</div>
+            <h2 class="sh" style="margin-bottom:14px;">Best Match for You</h2>
+          </div>
+          <div class="top-pick-card ripple-host">
+            <div class="top-pick-badge"><i class="fa-solid fa-trophy"></i> TOP PICK</div>
+            ${buildStatusPill(topRide.status)}
+
+            <div class="top-pick-layout" style="margin-top:16px;">
+              <!-- Driver avatar -->
+              <div class="driver-av-block">
+                <div class="driver-av-fallback" id="top-av-fallback">${(topRide.username||'?')[0].toUpperCase()}</div>
+                ${isVerified ? `<span class="verified-pill"><i class="fa-solid fa-shield-check"></i> Verified</span>` : ''}
+              </div>
+
+              <!-- Main details -->
+              <div>
+                <div class="rc-driver-name">
+                  ${topRide.username}
+                  <span class="rc-rating"><i class="fa-solid fa-star"></i> ${topRatingData.rating} (${topRatingData.reviews})</span>
+                  <span class="rc-trust"><i class="fa-solid fa-shield-halved fa-xs"></i> ${trustScore}/100</span>
+                  ${matchScore !== null ? `<span class="match-badge"><i class="fa-solid fa-bullseye fa-xs"></i> ${matchScore}% Match</span>` : ''}
+                </div>
+                <div id="top-badges" style="font-size:12.5px;color:var(--text-muted);margin-bottom:2px;">Loading achievements…</div>
+
+                ${buildRouteHtml(topRide)}
+                ${getDistanceLabel(topRide)}
+
+                <div class="rc-meta-row">
+                  <span class="rc-meta-chip"><i class="fa-solid fa-calendar-day"></i> ${topRide.date}</span>
+                  <span class="rc-meta-chip"><i class="fa-regular fa-clock"></i> ${topRide.time}</span>
+                </div>
+
+                <div class="vehicle-row">
+                  <div class="vehicle-chip"><i class="fa-solid fa-car"></i><strong>${vehicleModel}</strong></div>
+                  <div class="vehicle-chip"><i class="fa-solid fa-palette"></i> ${vehicleColor}</div>
+                  <div class="vehicle-chip"><i class="fa-solid fa-hashtag"></i> ${vehicleNumber}</div>
+                  <div class="vehicle-chip"><i class="fa-solid fa-snowflake"></i> ${acLabel}</div>
+                </div>
+
+                ${buildPrefChips(prefs)}
+
+                <div class="action-row">
+                  <a class="act-btn act-btn-call ripple-host" href="${topRide.phoneNumber ? `tel:${topRide.phoneNumber}` : '#'}">
+                    <i class="fa-solid fa-phone"></i> Call Driver
+                  </a>
+                  <a class="act-btn act-btn-whatsapp ripple-host" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                  </a>
+                  <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='openRoute(${JSON.stringify(topRide.source)}, ${JSON.stringify(topRide.destination)})'>
+                    <i class="fa-solid fa-map-location-dot"></i> Route
+                  </button>
+                  <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='saveFavorite(${JSON.stringify(topRide.source)}, ${JSON.stringify(topRide.destination)})'>
+                    <i class="fa-solid fa-heart"></i> Save
+                  </button>
+                </div>
+              </div>
+
+              <!-- Booking column -->
+              <div class="booking-col">
+                <div class="price-display">
+                  <div class="price-label">Per Seat</div>
+                  <div class="price-value">₹${topRide.price}</div>
+                  <div class="price-sub">Fair-split pricing</div>
+                </div>
+
+                <div class="seats-selector">
+                  <label for="seats-${topRide._id}">Seats</label>
+                  <input type="number" id="seats-${topRide._id}" min="1" max="${availableSeats > 0 ? availableSeats : 1}" value="1" />
+                </div>
+
+                <div class="seats-remaining ${availableSeats <= 1 && availableSeats > 0 ? 'low' : 'ok'}">
+                  <i class="fa-solid fa-${availableSeats === 0 ? 'ban' : availableSeats <= 1 ? 'fire' : 'circle-check'}"></i>
+                  ${availableSeats === 0 ? 'Fully Booked' : availableSeats === 1 ? '1 Seat Left!' : `${availableSeats} Seats Available`}
+                </div>
+
+                ${Number(topRide.seats) > 0
+                  ? `<button type="button" class="act-btn act-btn-book ripple-host" style="width:100%;justify-content:center;"
+                       onclick="bookRide('${topRide._id}', '${topRide.username}', ${topRide.price}, ${topRide.seats}, '${topRide.source}', '${topRide.destination}')">
+                       <i class="fa-solid fa-bolt"></i> Book Now
+                     </button>`
+                  : `<button type="button" class="act-btn act-btn-waitlist ripple-host" style="width:100%;justify-content:center;"
+                       onclick="joinWaitlist('${topRide._id}')">
+                       <i class="fa-solid fa-hourglass-half"></i> Join Waitlist
+                     </button>`}
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Load badges async
+        try {
+          const resp2 = await fetch(`/api/profile/${encodeURIComponent(topRide.username)}`);
+          if (resp2.ok) {
+            const u2 = await resp2.json();
+            const badges = u2.badges || [];
+            const el = document.getElementById('top-badges');
+            if (el) el.innerHTML = badges.length
+              ? `<span style="font-size:12.5px;color:var(--text-muted);">🏅 ${badges.join(' · ')}</span>`
+              : `<span style="font-size:12.5px;color:var(--text-muted);">No badges yet</span>`;
+          }
+        } catch(e) { console.error('Top badge load error:', e); }
+
+        // Try to load driver avatar image
+        try {
+          const profileImage = topRide.profileImage || topRide.driverProfileImage;
+          if (profileImage) {
+            const fallbackEl = document.getElementById('top-av-fallback');
+            if (fallbackEl) {
+              const img = document.createElement('img');
+              img.src = profileImage; img.className = 'driver-av';
+              img.alt = topRide.username;
+              img.onerror = () => {}; // keep fallback div if image fails
+              fallbackEl.replaceWith(img);
+            }
+          }
+        } catch(e) {}
+
+        recommendedContainer.style.display = 'block';
+      } catch(err) {
+        console.error('Display recommendation error:', err);
+        recommendedContainer.style.display = 'none';
+      }
+
+      await displayRides(restRides);
+    }
+
+    // ── displayRides (regular cards) ────────────────
+    async function displayRides(rides) {
+      const container = document.getElementById('ridesContainer');
+      container.innerHTML = '';
+
+      for (const ride of rides) {
+        const div = document.createElement('div');
+        div.className = 'ride-card-new ripple-host';
+
+        let ratingData = { rating: 0, reviews: 0 };
+        try {
+          const ratingRes = await fetch(`/api/reviews/driver-score/${encodeURIComponent(ride.username)}`);
+          if (ratingRes.ok) ratingData = await ratingRes.json();
+        } catch(e) { console.error('Rating fetch error for', ride.username, e); }
+
+        let phoneData = { phoneNumber: "" };
+        try {
+          const phoneRes = await fetch(`/api/users/phone/${encodeURIComponent(ride.username)}`);
+          if (phoneRes.ok) phoneData = await phoneRes.json();
+        } catch(e) { console.error('Phone fetch error for', ride.username, e); }
+
+        const driverPhone   = phoneData.phoneNumber || ride.phoneNumber || "";
+        ride.phoneNumber    = driverPhone;
+        const cleanPhone    = driverPhone ? driverPhone.replace(/\D/g,'') : "";
+        const whatsappPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+        const whatsappUrl   = cleanPhone
+          ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hi ${ride.username}, I would like to book your ride from ${ride.source} to ${ride.destination}.`)}`
+          : "#";
+
+        let vehicle = null;
+        try {
+          const vehicleRes = await fetch(`/api/vehicles/${encodeURIComponent(ride.username)}`);
+          if (vehicleRes.ok) vehicle = await vehicleRes.json();
+        } catch(e) { console.error('Vehicle fetch error for', ride.username, e); }
+
+        const vehicleModel  = vehicle?.vehicleModel  || ride.vehicleModel || 'Vehicle';
+        const vehicleColor  = vehicle?.vehicleColor  || '';
+        const vehicleNumber = vehicle?.vehicleNumber || '';
+        const acLabel       = vehicle?.acAvailable   ? 'AC' : 'Non AC';
+        const availableSeats= Number(ride.seats ?? 0);
+        const almostFull    = availableSeats <= 1 && availableSeats > 0;
+        const trustScore    = ride.trustScore ?? 50;
+        const isVerified    = !!ride.isVerifiedDriver;
+        const matchScore    = ride.matchScore ?? ride.score ?? null;
+        const prefs         = ride.preferences || {};
+        const profileImage  = ride.profileImage || ride.driverProfileImage || '';
+
+        const avatarHtml = profileImage
+          ? `<img src="${profileImage}" class="driver-av" alt="${ride.username}" onerror="this.outerHTML='<div class=\\'driver-av-fallback\\'>${(ride.username||'?')[0].toUpperCase()}</div>'" />`
+          : `<div class="driver-av-fallback" style="width:54px;height:54px;font-size:17px;">${(ride.username||'?')[0].toUpperCase()}</div>`;
+
+        div.innerHTML = `
+          <div class="rc-header">
+            <div class="rc-header-left">
+              <div class="driver-av-block" style="gap:6px;">
+                ${avatarHtml}
+                ${isVerified ? `<span class="verified-pill"><i class="fa-solid fa-shield-check"></i> Verified</span>` : ''}
+              </div>
+              <div style="flex:1;">
+                <div class="rc-driver-name" style="font-size:15px;">
+                  ${ride.username}
+                  <span class="rc-rating"><i class="fa-solid fa-star"></i> ${ratingData.rating}</span>
+                  <span class="rc-trust" style="font-size:10.5px;"><i class="fa-solid fa-shield-halved" style="font-size:9px;"></i> ${trustScore}/100</span>
+                </div>
+                <div class="rc-badges-row">
+                  ${buildStatusPill(ride.status)}
+                  ${almostFull ? '<span class="status-pill" style="background:rgba(225,29,72,0.08);color:#9f1239;border:1px solid rgba(225,29,72,0.15);"><span class="status-dot" style="background:#e11d48;animation:pulseDot 1.2s infinite;"></span>Almost Full</span>' : ''}
+                  ${matchScore !== null ? `<span class="match-badge"><i class="fa-solid fa-bullseye fa-xs"></i> ${matchScore}% Match</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="rc-header-right">
+              <div class="price-display" style="text-align:right;">
+                <div class="price-label">Per Seat</div>
+                <div class="price-value" style="font-size:26px;">₹${ride.price}</div>
+              </div>
+              <div class="seats-remaining ${availableSeats <= 1 && availableSeats > 0 ? 'low' : 'ok'}" style="font-size:11.5px;">
+                <i class="fa-solid fa-${availableSeats === 0 ? 'ban' : availableSeats <= 1 ? 'fire' : 'circle-check'}"></i>
+                ${availableSeats === 0 ? 'Full' : availableSeats === 1 ? '1 Seat Left!' : `${availableSeats} Seats`}
+              </div>
+            </div>
+          </div>
+
+          ${buildRouteHtml(ride)}
+          ${getDistanceLabel(ride)}
+
+          <div class="rc-meta-row">
+            <span class="rc-meta-chip"><i class="fa-solid fa-calendar-day"></i> ${ride.date} · ${ride.time}</span>
+            <span class="rc-meta-chip"><i class="fa-solid fa-car"></i> ${vehicleModel}</span>
+            ${vehicleColor ? `<span class="rc-meta-chip"><i class="fa-solid fa-palette"></i> ${vehicleColor}</span>` : ''}
+            ${vehicleNumber ? `<span class="rc-meta-chip"><i class="fa-solid fa-hashtag"></i> ${vehicleNumber}</span>` : ''}
+            <span class="rc-meta-chip"><i class="fa-solid fa-snowflake"></i> ${acLabel}</span>
+          </div>
+
+          ${buildPrefChips(prefs)}
+
+          <div class="action-row">
+            ${Number(ride.seats) > 0
+              ? `<div class="seats-selector" style="background:transparent;border:none;padding:0;gap:6px;">
+                   <label for="seats-${ride._id}" style="white-space:nowrap;font-size:12px;color:var(--text-muted);">Seats:</label>
+                   <input type="number" id="seats-${ride._id}" min="1" max="${availableSeats > 0 ? availableSeats : 1}" value="1" style="width:52px;" />
+                 </div>
+                 <button type="button" class="act-btn act-btn-book ripple-host"
+                   onclick="bookRide('${ride._id}', '${ride.username}', ${ride.price}, ${ride.seats})">
+                   <i class="fa-solid fa-bolt"></i> Book Ride
+                 </button>`
+              : `<button type="button" class="act-btn act-btn-waitlist ripple-host" onclick="joinWaitlist('${ride._id}')">
+                   <i class="fa-solid fa-hourglass-half"></i> Join Waitlist
+                 </button>`}
+            <a class="act-btn act-btn-call ripple-host" href="${ride.phoneNumber ? `tel:${ride.phoneNumber}` : '#'}">
+              <i class="fa-solid fa-phone"></i> Call
+            </a>
+            <a class="act-btn act-btn-whatsapp ripple-host" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">
+              <i class="fa-brands fa-whatsapp"></i> WhatsApp
+            </a>
+            <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='openRoute(${JSON.stringify(ride.source)}, ${JSON.stringify(ride.destination)})'>
+              <i class="fa-solid fa-map-location-dot"></i> Route
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      }
+
+      // Re-apply cursor listeners to new cards
+      addCursorClass(document.querySelectorAll('.ride-card-new,.top-pick-card'), 'c-card');
+      addCursorClass(document.querySelectorAll('.act-btn,.btn-primary,.btn-ghost'), 'c-btn');
+    }
+
+    // ── fetchRides ───────────────────────────────────
+    async function fetchRides() {
+      const res = await fetch('/api/rides/all');
+      const rides = await res.json();
+      await displayRidesWithRecommendation(sortByDistance(rides));
+    }
+
+    // ── loadNearbyRides ──────────────────────────────
+    async function loadNearbyRides(userLat, userLng) {
+      currentUserLat = userLat;
+      currentUserLng = userLng;
+      const res = await fetch('/api/rides/all');
+      const rides = await res.json();
+      await displayRidesWithRecommendation(sortByDistance(rides));
+    }
+
+    // ── sortRides ────────────────────────────────────
+    async function sortRides() {
+      const res = await fetch('/api/rides/all');
+      let rides = await res.json();
+      const sort = document.getElementById("sortSelect").value;
+      if (sort === "priceLow")   rides.sort((a, b) => a.price - b.price);
+      else if (sort === "priceHigh") rides.sort((a, b) => b.price - a.price);
+      else if (sort === "date")  rides.sort((a, b) => new Date(a.date) - new Date(b.date));
+      else if (sort === "seats") rides.sort((a, b) => b.seats - a.seats);
+      await displayRidesWithRecommendation(sortByDistance(rides));
+    }
+
+    // ── loadPickupSearchOptions ──────────────────────
+    const pickupCity = "Vijayawada";
+    async function loadPickupSearchOptions() {
+      try {
+        const res = await fetch(`/api/pickup-points/${encodeURIComponent(pickupCity)}`);
+        if (!res.ok) return;
+        const points = await res.json();
+        const sel = document.getElementById('pickupSearch');
+        const current = sel.value;
+        sel.innerHTML = '<option value="">All Pickup Points</option>' +
+          points.map(n => `<option value="${n}">${n}</option>`).join('');
+        if (current) sel.value = current;
+      } catch(e) { console.error('loadPickupSearchOptions error:', e); }
+    }
+
+    // ── initRides ────────────────────────────────────
+    async function initRides() {
+      loadPickupSearchOptions();
+
+      // Show skeleton while loading
+      document.getElementById('ridesContainer').innerHTML = `
+        <div class="skeleton-card" style="display:flex;gap:16px;align-items:flex-start;">
+          <div class="skeleton sk-avatar"></div>
+          <div style="flex:1;">
+            <div class="skeleton sk-line" style="width:60%;"></div>
+            <div class="skeleton sk-line" style="width:40%;height:11px;"></div>
+            <div class="skeleton sk-line" style="width:80%;margin-top:14px;"></div>
+            <div class="skeleton sk-line" style="width:55%;height:11px;"></div>
+          </div>
+        </div>
+        <div class="skeleton-card" style="display:flex;gap:16px;align-items:flex-start;margin-top:14px;">
+          <div class="skeleton sk-avatar"></div>
+          <div style="flex:1;">
+            <div class="skeleton sk-line" style="width:55%;"></div>
+            <div class="skeleton sk-line" style="width:35%;height:11px;"></div>
+            <div class="skeleton sk-line" style="width:75%;margin-top:14px;"></div>
+          </div>
+        </div>`;
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => { await loadNearbyRides(position.coords.latitude, position.coords.longitude); },
+          async () => { await loadSmartOrAllRides(); }
+        );
+        return;
+      }
+      await loadSmartOrAllRides();
+    }
+
+    async function loadSmartOrAllRides() {
+      try {
+        const smartRes = await fetch('/api/rides/smart-search');
+        if (smartRes.ok) {
+          const smartRides = await smartRes.json();
+          if (smartRides && smartRides.length > 0) {
+            await displayRidesWithRecommendation(smartRides);
+            return;
+          }
+        }
+      } catch(e) { console.error('Init smart search error:', e); }
+      await fetchRides();
+    }
+
+    // ── formatRoute ──────────────────────────────────
+    function formatRoute(ride){
+      const chain = [];
+      if(ride?.source) chain.push(ride.source);
+      if(Array.isArray(ride?.stops)){
+        for(const s of ride.stops){
+          if(s?.name && s.name !== ride.source && s.name !== ride.destination) chain.push(s.name);
+        }
+      }
+      if(ride?.destination) chain.push(ride.destination);
+      return chain.join(' → ');
+    }
+
+    // ── openRoute ────────────────────────────────────
+    function openRoute(source, destination) {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(source)}&destination=${encodeURIComponent(destination)}`;
+      window.open(url, "_blank");
+    }
+
+    // ── saveFavorite ──────────────────────────────────
+    async function saveFavorite(source, destination) {
+      const username = localStorage.getItem("username");
+      const response = await fetch("/api/favorites/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, source, destination })
+      });
+      const data = await response.json();
+      alert(data.message);
+    }
+
+    // ── joinWaitlist ──────────────────────────────────
+    async function joinWaitlist(rideId) {
+      if (!userName || !userCode) { alert('Please login to join the waitlist'); return; }
+      try {
+        const response = await fetch('/api/waitlist/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rideId, username: userName })
+        });
+        const data = await response.json();
+        if (!response.ok) { alert(data.message || 'Failed to join waitlist'); return; }
+        alert(data.message + (data.position ? ` (Position: ${data.position})` : ''));
+        setTimeout(() => location.href = '/dashboard', 1500);
+      } catch(e) { console.error(e); alert('Failed to join waitlist'); }
+    }
+
+    // ── bookRide ──────────────────────────────────────
+    async function bookRide(rideId, publishedBy, pricePerSeat, maxSeats, boardingPoint, dropPoint, boardingLat, boardingLng, dropLat, dropLng) {
+      try {
+        const seatInput = document.getElementById(`seats-${rideId}`);
+        if (!seatInput) { alert("Seat selector not found for this ride. Please refresh and try again."); return; }
+
+        const seatsRequested = parseInt(seatInput.value);
+        if (!seatsRequested || seatsRequested <= 0 || seatsRequested > maxSeats) {
+          alert(`Please enter a valid number of seats (1 to ${maxSeats})`);
+          return;
+        }
+
+        const totalPrice = seatsRequested * pricePerSeat;
+
+        const response = await fetch('/api/rides/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rideId,
+            bookedBy: userName,
+            bookedByCode: userCode,
+            publishedBy,
+            seatsBooked: seatsRequested,
+            totalPrice,
+            boardingPoint: boardingPoint || "",
+            boardingLat: (boardingLat !== undefined && boardingLat !== null && boardingLat !== "") ? Number(boardingLat) : undefined,
+            boardingLng: (boardingLng !== undefined && boardingLng !== null && boardingLng !== "") ? Number(boardingLng) : undefined,
+            dropPoint: dropPoint || "",
+            dropLat: (dropLat !== undefined && dropLat !== null && dropLat !== "") ? Number(dropLat) : undefined,
+            dropLng: (dropLng !== undefined && dropLng !== null && dropLng !== "") ? Number(dropLng) : undefined
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const billCard = document.getElementById('billCard');
+          billCard.innerHTML = `
+            <h3><i class="fa-solid fa-circle-check" style="color:var(--green);"></i> Ride Booked Successfully!</h3>
+            <p><strong>Booked By:</strong> ${data.rideDetails.bookedBy}</p>
+            <p><strong>From:</strong> ${data.rideDetails.source}</p>
+            <p><strong>To:</strong> ${data.rideDetails.destination}</p>
+            <p><strong>Date:</strong> ${data.rideDetails.date}</p>
+            <p><strong>Time:</strong> ${data.rideDetails.time}</p>
+            <p><strong>Seats Booked:</strong> ${data.rideDetails.seatsBooked}</p>
+            <p><strong>Total Price:</strong> ₹${data.rideDetails.totalPrice}</p>
+          `;
+          billCard.style.display = 'block';
+          billCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => location.href = "/dashboard", 3000);
+          return;
+        }
+
+        if (response.status === 409 && data.waitlistEligible) {
+          const ok = confirm('Ride is full. Join waitlist?');
+          if (ok) await joinWaitlist(rideId);
+          return;
+        }
+
+        alert(data.message || 'Booking failed');
+      } catch(error) {
+        console.error("Booking Error:", error);
+        alert("Error booking ride");
+      }
+    }
+
+    // ── init ─────────────────────────────────────────
+    loadPickupSearchOptions();
+    initRides();
+
+    // ── URL param pre-fill ───────────────────────────
+    (function prefillFromUrl(){
+      const params = new URLSearchParams(window.location.search);
+      const src  = params.get('source');
+      const dest = params.get('destination');
+      const dt   = params.get('date');
+      if(src)  { const el=document.getElementById('pickupSearch'); if(el) el.value=src; }
+      if(dest) { const el=document.getElementById('dropSearch');   if(el) el.value=dest; }
+      if(dt)   { const el=document.getElementById('dateSearch');   if(el) el.value=dt; }
+      if(src||dest||dt) searchRides();
+    })();
+  </script>
+
+  <script src="notification-badge.js"></script>
+
+  <script>
+    // ── PWA ───────────────────────────────────────────
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then(() => console.log("PWA Ready"))
+          .catch((err) => console.error("SW registration failed:", err));
+      });
+    }
+
+    let deferredPrompt;
+
+    function setInstallButtonVisible(visible) {
+      const btn = document.getElementById("installBtn");
+      if (!btn) return;
+      btn.style.display = visible ? "block" : "none";
+      btn.disabled = !visible;
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      // Save the prompt event so we can show it later in response to a user gesture.
+      e.preventDefault();
+      deferredPrompt = e;
+      setInstallButtonVisible(true);
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredPrompt = null;
+      setInstallButtonVisible(false);
+    });
+
+    function tryInstall() {
+      // If the event is no longer valid, hide the button.
+      if (!deferredPrompt) return;
+
+      const btn = document.getElementById("installBtn");
+      if (btn) btn.disabled = true;
+
+      try {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice
+          .then(() => {
+            deferredPrompt = null;
+            setInstallButtonVisible(false);
+          })
+          .catch(() => {
+            // User dismissed the prompt.
+            if (btn) btn.disabled = false;
+          });
+      } catch (err) {
+        deferredPrompt = null;
+        setInstallButtonVisible(false);
+      }
+    }
+
+    const installBtn = document.getElementById("installBtn");
+    if (installBtn) {
+      // Ensure handler is attached once.
+      installBtn.addEventListener("click", tryInstall, { once: false });
+      setInstallButtonVisible(false);
+    }
+
+  </script>
+</body>
+</html>
+

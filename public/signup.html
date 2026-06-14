@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SahaVahan — Create Your Account</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4338CA">
+  <meta name="description" content="Join SahaVahan — Smart carpooling platform. Book and publish rides with verified drivers." />
+  <link rel="apple-touch-icon" href="/images/logo.png" sizes="180x180">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-main: #F7F8FC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-muted: #F0F2F8;
+      --primary: #4338CA;
+      --primary-light: #6366F1;
+      --primary-dim: rgba(67,56,202,0.07);
+      --accent: #0EA5E9;
+      --accent-dim: rgba(14,165,233,0.08);
+      --green: #059669;
+      --green-light: #10B981;
+      --green-dim: rgba(5,150,105,0.08);
+      --amber: #D97706;
+      --rose: #E11D48;
+      --rose-dim: rgba(225, 29, 72, 0.08);
+      --text-main: #0D1117;
+      --text-muted: #5C6B82;
+      --border: #DDE3EE;
+      --border-hover: #B8C4D8;
+      --shadow-sm: 0 2px 8px rgba(13,17,23,0.05);
+      --shadow-md: 0 10px 30px rgba(13,17,23,0.09);
+      --shadow-lg: 0 24px 52px rgba(13,17,23,0.13);
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html, body { min-height: 100vh; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.65;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ══ BACKGROUND PATTERNS & ORBS ══ */
+    .hero-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(67,56,202,0.042) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67,56,202,0.042) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 40%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black 40%, transparent 100%);
+      pointer-events: none;
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle,rgba(67,56,202,.12) 0%,transparent 70%); top:-80px; left:-100px; }
+    .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle,rgba(14,165,233,.10) 0%,transparent 70%); bottom:10%; right:-60px; }
+
+    /* ══ NAVIGATION BAR ══ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 20px 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.8); backdrop-filter: blur(22px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-logo-wrap { display: flex; align-items: center; gap: 10px; text-decoration: none; transition: transform 0.2s; }
+    .nav-logo-wrap:hover { transform: scale(1.03); }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(67,56,202,0.3); flex-shrink: 0;
+    }
+    .nav-logo-text { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-main); letter-spacing: -0.3px; }
+    .nav-logo-text span { color: var(--primary); }
+    .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-login-link { font-size: 13.5px; font-weight: 600; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+    .nav-login-link:hover { color: var(--primary); }
+
+    /* ══ MAIN CONTAINER ══ */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px 60px;
+      z-index: 1;
+    }
+
+    /* ══ SIGNUP CARD (Premium Glassmorphism) ══ */
+    #container {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.6);
+      border-radius: 24px;
+      padding: 44px 40px;
+      width: 100%;
+      max-width: 500px;
+      animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    #container:hover {
+      border-color: rgba(63, 102, 241, 0.25);
+      box-shadow: 0 30px 60px rgba(13, 17, 23, 0.16);
+    }
+
+    /* Steps Flow Header Styles */
+    .form-header { text-align: center; margin-bottom: 32px; }
+    .form-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--primary-dim); border: 1px solid rgba(67,56,202,0.15);
+      border-radius: 100px; padding: 5px 14px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--primary); margin-bottom: 14px;
+    }
+    #container h2 {
+      font-family: var(--font-display);
+      font-size: 28px; font-weight: 800;
+      color: var(--text-main); letter-spacing: -0.5px; line-height: 1.2;
+    }
+    .form-subtitle { font-size: 14px; color: var(--text-muted); margin-top: 6px; }
+
+    /* Form Layout Elements */
+    #signupForm, #otpSection { display: flex; flex-direction: column; gap: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; position: relative; }
+    
+    label {
+      font-size: 12.5px; font-weight: 600;
+      color: var(--text-main); padding-left: 2px;
+    }
+    
+    .input-wrapper { position: relative; display: flex; align-items: center; }
+    .input-icon { position: absolute; left: 14px; color: var(--text-muted); font-size: 13px; pointer-events: none; transition: color 0.2s; }
+    
+    input {
+      width: 100%;
+      background: var(--bg-surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px 12px 38px;
+      font-size: 14px; font-family: var(--font-body); color: var(--text-main);
+      outline: none; transition: all 0.25s;
+    }
+    input::placeholder { color: #A1B0CB; }
+    input:focus {
+      background: var(--bg-surface);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-dim);
+    }
+    input:focus + .input-icon { color: var(--primary); }
+
+    /* Action Elements */
+    button[type="submit"], .btn-primary {
+      margin-top: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 14.5px; font-weight: 600; font-family: var(--font-body);
+      padding: 13px 24px; cursor: pointer; width: 100%;
+      transition: all 0.25s; box-shadow: 0 4px 16px rgba(67,56,202,0.3);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    button[type="submit"]:hover, .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(67,56,202,0.45);
+    }
+    button[type="submit"]:disabled, .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 14px; font-weight: 600;
+      padding: 12px 24px; cursor: pointer; width: 100%;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-surface-muted);
+      border-color: var(--border-hover);
+    }
+
+    /* Custom Message Alert Boxes */
+    .message-banner {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.4;
+      animation: fadeUp 0.3s ease forwards;
+    }
+    .message-banner.error {
+      background: var(--rose-dim);
+      border: 1px solid rgba(225, 29, 72, 0.2);
+      color: var(--rose);
+    }
+    .message-banner.success {
+      background: var(--green-dim);
+      border: 1px solid rgba(5, 150, 105, 0.2);
+      color: var(--green);
+    }
+
+    /* Layout Toggle Utilities */
+    .hidden { display: none !important; }
+
+    .form-footer-links { text-align: center; margin-top: 20px; font-size: 13.5px; color: var(--text-muted); }
+    .form-footer-links a { color: var(--primary); font-weight: 600; text-decoration: none; transition: color 0.2s; }
+    .form-footer-links a:hover { color: var(--primary-light); text-decoration: underline; }
+    
+    .terms-text { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 16px; line-height: 1.5; padding: 0 10px; }
+    .terms-text a { color: var(--text-main); text-decoration: none; font-weight: 500; }
+    .terms-text a:hover { text-decoration: underline; }
+
+    /* ══ FOOTER ══ */
+    footer { background: var(--bg-surface); border-top: 1px solid var(--border); padding: 24px 0; z-index: 1; position: relative; margin-top: auto; }
+    .footer-inner { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-muted); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 560px) {
+      nav { padding: 14px 20px; }
+      #container { padding: 32px 20px; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="hero-grid"></div>
+
+  <nav id="main-nav">
+    <a href="index.html" class="nav-logo-wrap" aria-label="SahaVahan Home">
+      <div class="nav-logo-icon" aria-hidden="true" style="background:transparent; box-shadow:none;">
+        <img src="/images/logo.png" alt="" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;" />
+      </div>
+      <div class="nav-logo-text">Saha<span>Vahan</span></div>
+    </a>
+    <div class="nav-right">
+      <a href="login.html" class="nav-login-link">Already a member? Sign in</a>
+    </div>
+  </nav>
+
+  <main>
+    <div id="container">
+      <div class="form-header">
+        <div id="flowEyebrow" class="form-eyebrow"><i class="fa-solid fa-user-plus"></i> Step 1 of 2</div>
+        <h2 id="flowTitle">Create Account</h2>
+        <p id="flowSubtitle" class="form-subtitle">Join India's trusted smart carpooling community.</p>
+      </div>
+
+      <div id="msgBanner" class="message-banner">
+        <i id="msgIcon" class="fa-solid"></i>
+        <span id="msgText"></span>
+      </div>
+
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <div class="input-wrapper">
+            <input type="text" id="username" name="username" placeholder="Choose a unique username" required />
+            <i class="fa-solid fa-user input-icon"></i>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <div class="input-wrapper">
+            <input type="email" id="email" name="email" placeholder="name@domain.com" required />
+            <i class="fa-solid fa-envelope input-icon"></i>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="phoneNumber">Phone Number</label>
+          <div class="input-wrapper">
+            <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="Enter mobile number" required />
+            <i class="fa-solid fa-phone input-icon"></i>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="referralCode">Referral Code <span style="font-weight:normal; color:var(--text-muted);">(Optional)</span></label>
+          <div class="input-wrapper">
+            <input type="text" id="referralCode" name="referralCode" placeholder="Enter code if invited" />
+            <i class="fa-solid fa-gift input-icon"></i>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="password" name="password" placeholder="Min. 6 characters" minlength="6" required />
+            <i class="fa-solid fa-lock input-icon"></i>
+          </div>
+        </div>
+        
+        <button type="submit" id="signupBtn">Get Started <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+
+      <div id="otpSection" class="hidden">
+        <div class="form-group">
+          <label for="verificationEmail">Target Email Account</label>
+          <div class="input-wrapper">
+            <input type="email" id="verificationEmail" readonly disabled style="opacity: 0.75; cursor: not-allowed;" />
+            <i class="fa-solid fa-envelope input-icon"></i>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="otpInput">Enter Verification OTP</label>
+          <div class="input-wrapper">
+            <input type="text" id="otpInput" placeholder="Enter the security code sent to your email" inputmode="numeric" autocomplete="one-time-code" required />
+            <i class="fa-solid fa-key input-icon"></i>
+          </div>
+        </div>
+
+        <button type="button" id="verifyOtpBtn" class="btn-primary">Verify Code <i class="fa-solid fa-shield-check"></i></button>
+        <button type="button" id="resendOtpBtn" class="btn-secondary">Resend Verification Code <i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+
+      <div class="form-footer-links" id="footerPromptLinks">
+        Already have an account? <a href="login.html">Login here</a>
+      </div>
+
+      <p class="terms-text" id="footerTermsContent">
+        By continuing, you agree to SahaVahan's <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© 2026 SahaVahan. All rights reserved.</span>
+      <div style="display:flex; gap:16px;">
+        <a href="#" style="color:var(--text-muted); text-decoration:none;">Privacy</a>
+        <a href="#" style="color:var(--text-muted); text-decoration:none;">Terms</a>
+        <a href="#" style="color:var(--text-muted); text-decoration:none;">Support</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const signupForm = document.getElementById("signupForm");
+      const signupBtn = document.getElementById("signupBtn");
+      
+      const otpSection = document.getElementById("otpSection");
+      const verificationEmailInput = document.getElementById("verificationEmail");
+      const otpInput = document.getElementById("otpInput");
+      const verifyOtpBtn = document.getElementById("verifyOtpBtn");
+      const resendOtpBtn = document.getElementById("resendOtpBtn");
+
+      const flowEyebrow = document.getElementById("flowEyebrow");
+      const flowTitle = document.getElementById("flowTitle");
+      const flowSubtitle = document.getElementById("flowSubtitle");
+
+      const msgBanner = document.getElementById("msgBanner");
+      const msgIcon = document.getElementById("msgIcon");
+      const msgText = document.getElementById("msgText");
+
+      function displayFeedback(type, message) {
+        msgBanner.className = `message-banner ${type}`;
+        msgText.textContent = message;
+        if (type === "success") {
+          msgIcon.className = "fa-solid fa-circle-check";
+        } else {
+          msgIcon.className = "fa-solid fa-circle-exclamation";
+        }
+        msgBanner.style.display = "flex";
+      }
+
+      function clearFeedback() {
+        msgBanner.style.display = "none";
+        msgText.textContent = "";
+      }
+
+      // Step 1 Form Handler
+      if (signupForm) {
+        signupForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          clearFeedback();
+
+          signupBtn.disabled = true;
+          signupBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Sending OTP...`;
+
+          const targetedEmail = document.getElementById("email").value.trim();
+
+          const payload = {
+            username: document.getElementById("username").value.trim(),
+            email: targetedEmail,
+            phoneNumber: document.getElementById("phoneNumber").value.trim(),
+            referralCode: document.getElementById("referralCode").value.trim() || undefined,
+            password: document.getElementById("password").value.trim()
+          };
+
+          try {
+            const res = await fetch("/api/users/signup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+              // Cache data context fields locally
+              localStorage.setItem("pendingVerificationEmail", targetedEmail);
+              verificationEmailInput.value = targetedEmail;
+
+              // Transition screen states seamlessly
+              signupForm.classList.add("hidden");
+              otpSection.classList.remove("hidden");
+
+              // Update Header Content
+              flowEyebrow.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Step 2 of 2`;
+              flowTitle.textContent = "Confirm Identity";
+              flowSubtitle.textContent = "Please enter the authentication OTP code transmitted to your email address.";
+              
+              displayFeedback("success", "Registration profile initiated! A confirmation code was delivered to your mailbox.");
+            } else {
+              displayFeedback("error", data.message || "Signup submission failed. Please verify configurations.");
+              signupBtn.disabled = false;
+              signupBtn.innerHTML = `Get Started <i class="fa-solid fa-arrow-right"></i>`;
+            }
+          } catch (err) {
+            console.error(err);
+            displayFeedback("error", "Network interaction error experienced. Please check connection health status.");
+            signupBtn.disabled = false;
+            signupBtn.innerHTML = `Get Started <i class="fa-solid fa-arrow-right"></i>`;
+          }
+        });
+      }
+
+      // Step 2 OTP Handler
+      if (verifyOtpBtn) {
+        verifyOtpBtn.addEventListener("click", async () => {
+          const codeValue = otpInput.value.trim();
+          const savedEmail = localStorage.getItem("pendingVerificationEmail") || document.getElementById("email").value.trim();
+
+          if (!codeValue) {
+            displayFeedback("error", "Please provide a valid numeric confirmation code.");
+            return;
+          }
+
+          clearFeedback();
+          verifyOtpBtn.disabled = true;
+          verifyOtpBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying OTP...`;
+
+          try {
+            const res = await fetch("/api/users/verify-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: savedEmail,
+                otp: codeValue
+              })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+              displayFeedback("success", "Email verified successfully! Forwarding authentication credentials...");
+              localStorage.removeItem("pendingVerificationEmail");
+              
+              setTimeout(() => {
+                window.location.href = "login.html";
+              }, 2000);
+            } else {
+              displayFeedback("error", data.message || "Invalid or expired authorization signature supplied.");
+              verifyOtpBtn.disabled = false;
+              verifyOtpBtn.innerHTML = `Verify Code <i class="fa-solid fa-shield-check"></i>`;
+            }
+          } catch (err) {
+            console.error(err);
+            displayFeedback("error", "An analytical transaction failure occurred. Please process requests again.");
+            verifyOtpBtn.disabled = false;
+            verifyOtpBtn.innerHTML = `Verify Code <i class="fa-solid fa-shield-check"></i>`;
+          }
+        });
+      }
+
+      // Inline Resend Trigger Action Implementation
+      if (resendOtpBtn) {
+        resendOtpBtn.addEventListener("click", async () => {
+          const savedEmail = localStorage.getItem("pendingVerificationEmail") || document.getElementById("email").value.trim();
+          
+          clearFeedback();
+          resendOtpBtn.disabled = true;
+          resendOtpBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Requesting New Code...`;
+
+try {
+            const res = await fetch("/api/users/resend-email-otp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: savedEmail })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+              displayFeedback("success", "A pristine access validation code sequence has been generated and dispatched.");
+            } else {
+              displayFeedback("error", data.message || "Unable to clear code parameters at this moment.");
+            }
+          } catch (err) {
+            console.error(err);
+            displayFeedback("error", "Connection state failure while executing retry processing loop.");
+          } finally {
+            resendOtpBtn.disabled = false;
+            resendOtpBtn.innerHTML = `Resend Verification Code <i class="fa-solid fa-rotate-right"></i>`;
+          }
+        });
+      }
+    });
+  </script>
+  <script src="scripts.js"></script>
+  <script src="notification-badge.js"></script>
+</body>
+</html>

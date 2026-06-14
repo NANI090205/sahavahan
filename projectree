@@ -1,0 +1,41 @@
+CarPooling/
+│
+├── app.js                    # Main Express application
+├── package.json              # Dependencies
+│
+├── bin/
+│   └── www                   # Server startup script
+│
+├── middleware/
+│   └── auth.js               # Authentication middleware
+│
+├── models/
+│   ├── User.js
+│   ├── Ride.js
+│   ├── BookedRide.js
+│   ├── Dashboard.js
+│   └── UserRides.js
+│
+├── routes/
+│   ├── index.js
+│   ├── users.js
+│   ├── rides.js
+│   └── dashboard.js
+│
+├── utils/
+│   └── mailer.js             # Email notifications
+│
+├── public/
+│   ├── signup.html
+│   ├── login.html
+│   ├── ridepublish.html
+│   ├── rides.html
+│   ├── dashboard.html
+│   ├── services.html
+│   ├── contact.html
+│   ├── scripts.js
+│   ├── login.js
+│   ├── CSS files
+│   └── Images
+│
+└── views/

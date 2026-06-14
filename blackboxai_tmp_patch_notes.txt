@@ -1,0 +1,3 @@
+Patches applied so far:
+- Updated utils/checkProfileCompletion.js to use models/User.js fields (username/email/isEmailVerified/phoneNumber/profileCompleted/profilePhoto) and caller-provided vehicleExists.
+
