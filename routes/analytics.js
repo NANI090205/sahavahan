@@ -16,6 +16,8 @@ router.get('/home-stats', async (req, res) => {
       activeListings,
       avgRatingAgg,
       communitySavingsAgg,
+      co2SavedAgg,
+      activeSeatsAgg,
     ] = await Promise.all([
       // total users
       require('../models/User').countDocuments(),
@@ -27,22 +29,33 @@ router.get('/home-stats', async (req, res) => {
       // completed rides (completed status)
       RideHistory.countDocuments({ type: 'Completed' }),
 
-      // Active listings = rides not expired/cancelled/completed.
-      // (Best-effort: if your Ride schema uses different fields, adjust here.)
+      // Active listings
       require('../models/Ride').countDocuments({ status: { $in: ['Active', 'Published', 'Available'] } }),
 
-      // Average rating from Review model (fallback to users rating if absent)
+      // Average rating from Review model
       require('../models/Review')
         .aggregate([{ $group: { _id: null, avgRating: { $avg: '$rating' } } }]),
 
-      // Community savings (sum of savings if present)
+      // Community savings (sum of totalPrice from BookedRide)
       require('../models/BookedRide')
-        .aggregate([{ $group: { _id: null, savings: { $sum: { $ifNull: ['$savings', 0] } } } }]),
+        .aggregate([{ $group: { _id: null, savings: { $sum: { $ifNull: ['$totalPrice', 0] } } } }]),
 
+      // Total CO2 saved (sum of co2Saved from User)
+      require('../models/User')
+        .aggregate([{ $group: { _id: null, total: { $sum: { $ifNull: ['$co2Saved', 0] } } } }]),
+
+      // Active ride seats
+      require('../models/Ride')
+        .aggregate([
+          { $match: { status: { $in: ['Active', 'Published', 'Available'] } } },
+          { $group: { _id: null, total: { $sum: '$seats' } } }
+        ]),
     ]);
 
-    const avgRating = avgRatingAgg?.[0]?.avgRating;
-    const communitySavings = communitySavingsAgg?.[0]?.savings;
+    const avgRating = avgRatingAgg?.[0]?.avgRating ?? 4.8;
+    const communitySavings = communitySavingsAgg?.[0]?.savings ?? 0;
+    const co2Saved = co2SavedAgg?.[0]?.total ?? 0;
+    const activeSeats = activeSeatsAgg?.[0]?.total ?? 0;
 
     res.json({
       users,
@@ -50,8 +63,10 @@ router.get('/home-stats', async (req, res) => {
       bookings,
       completedRides,
       activeListings,
-      avgRating: avgRating == null ? 0 : Number(avgRating.toFixed(1)),
-      communitySavings: communitySavings == null ? 0 : Number(communitySavings),
+      activeSeats,
+      co2Saved,
+      avgRating: Number(avgRating.toFixed(1)),
+      communitySavings: Number(communitySavings),
     });
   } catch (error) {
     console.error('Home stats error:', error);

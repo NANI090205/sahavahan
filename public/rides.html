@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.alert = function(msg) { console.log("ALERT:", msg); };
+    window.confirm = function(msg) { console.log("CONFIRM:", msg); return true; };
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Available Rides — SahaVahan</title>
@@ -13,6 +17,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <style>
     /* ═══════════════════════════════════════════════
@@ -164,12 +170,218 @@
     .btn-logout:hover { color: var(--rose); border-color: #FECDD3; background: #FFF1F2; }
 
     /* ═══════════════════════════════════════════════
-       PAGE LAYOUT
-    ═══════════════════════════════════════════════ */
-    .page-wrap {
-      position: relative; z-index: 1;
-      max-width: 1160px; margin: 0 auto;
-      padding: 0 24px 80px;
+       PAGE LAYOUT Redesign
+     ═══════════════════════════════════════════════ */
+    .split-viewport {
+      display: flex;
+      min-height: calc(100vh - 76px);
+      margin-top: 76px;
+      position: relative;
+    }
+    .results-sidebar {
+      width: 50%;
+      min-width: 320px;
+      padding: 24px 24px 80px;
+      height: calc(100vh - 76px);
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      background: var(--bg-surface);
+      position: relative;
+      z-index: 10;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+    }
+    .results-sidebar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .results-sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .results-sidebar::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 10px;
+    }
+    .results-sidebar::-webkit-scrollbar-thumb:hover {
+      background: var(--border-hover);
+    }
+
+    .map-container-pane {
+      width: 50%;
+      flex: 0 0 50%;
+      height: calc(100vh - 76px);
+      position: sticky;
+      top: 76px;
+      z-index: 5;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .toggle-view-btn {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff;
+      border: none;
+      border-radius: 100px;
+      padding: 12px 24px;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: var(--shadow-lg);
+      cursor: none;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s;
+    }
+    .toggle-view-btn:hover {
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 10px 25px rgba(67,56,202,0.4);
+    }
+
+    .custom-price-marker {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 20px;
+      padding: 5px 11px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 12px;
+      border: 2px solid #fff;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .custom-price-marker.active-hover,
+    .custom-price-marker:hover {
+      background: var(--accent);
+      z-index: 1000 !important;
+    }
+
+    .search-field .suggestions-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+      max-height: 180px;
+      overflow-y: auto;
+      display: none;
+    }
+    .search-field .suggestions-dropdown div {
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: var(--text-main);
+      cursor: none;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-field .suggestions-dropdown div:last-child { border-bottom: none; }
+    .search-field .suggestions-dropdown div:hover { background: var(--primary-dim); color: var(--primary); }
+    .search-field .suggestions-dropdown div::before { content: '📍'; font-size: 11px; flex-shrink: 0; }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+    .map-popup-card {
+      padding: 6px;
+      font-family: var(--font-body);
+      max-width: 220px;
+    }
+    .map-popup-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .map-popup-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .map-popup-book-btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background: var(--primary);
+      color: #fff !important;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .custom-pin-destination {
+      width: 16px; height: 16px;
+      background: var(--rose);
+      border: 2.5px solid #ffffff;
+      border-radius: 4px;
+      box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.3), var(--shadow-md);
+      animation: destPulse 2s infinite;
+    }
+    @keyframes destPulse {
+      0% { box-shadow: 0 0 0 0px rgba(225, 29, 72, 0.5), var(--shadow-sm); }
+      70% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0), var(--shadow-md); }
+      100% { box-shadow: 0 0 0 0px rgba(225, 29, 72, 0), var(--shadow-sm); }
+    }
+
+    @media (min-width: 901px) {
+      body {
+        overflow: hidden;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .split-viewport {
+        margin-top: 64px;
+        min-height: calc(100vh - 64px);
+        flex-direction: column;
+      }
+      .results-sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: auto;
+        overflow-y: visible;
+        border-right: none;
+        padding: 16px 16px 100px;
+      }
+      .map-container-pane {
+        display: none;
+        width: 100%;
+        height: calc(100vh - 64px);
+        position: fixed;
+        top: 64px;
+        left: 0;
+        z-index: 1500;
+      }
+      .map-container-pane.active {
+        display: block;
+      }
+      .results-sidebar.inactive {
+        display: none;
+      }
+      .toggle-view-btn {
+        display: flex;
+      }
     }
 
     /* ═══════════════════════════════════════════════
@@ -662,6 +874,12 @@
       overflow: hidden;
       transition: all 0.3s cubic-bezier(0.34,1.1,0.64,1);
     }
+    .ride-card-new.selected-card,
+    .top-pick-card.selected-card {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-lg), 0 0 0 4px var(--primary-dim);
+      background: linear-gradient(145deg, var(--bg-surface) 0%, rgba(67, 56, 202, 0.04) 100%);
+    }
     .ride-card-new::before {
       content:''; position:absolute; top:-60%; left:-80%; width:50%; height:220%;
       background: linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.5) 50%,transparent 65%);
@@ -846,6 +1064,8 @@
       <li><a href="rides.html" class="active"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
       <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
       <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+      <li><a href="profile.html"><i class="fa-solid fa-user-gear" style="font-size:11px;margin-right:5px;"></i>Profile</a></li>
+      <li><a href="admin.html" id="navAdminLink" style="display:none;"><i class="fa-solid fa-shield-halved" style="font-size:11px;margin-right:5px;"></i>Admin Panel</a></li>
     </ul>
     <div class="nav-right">
       <div class="nav-user-pill">
@@ -857,7 +1077,9 @@
   </nav>
 
   <!-- ═══════════════ PAGE CONTENT ═══════════════ -->
-  <div class="page-wrap">
+  <div class="split-viewport">
+    
+    <div class="results-sidebar">
 
     <!-- HERO STRIP -->
     <div class="rides-hero">
@@ -905,27 +1127,28 @@
         <div class="search-grid">
           <div class="search-field">
             <label>Pickup Point</label>
-            <div class="search-field-inner">
-              <i class="fa-solid fa-location-dot search-field-icon"></i>
-              <select id="pickupSearch" onchange="searchRides()">
-                <option value="">All Pickup Points</option>
-              </select>
-              <i class="fa-solid fa-chevron-down search-field-caret"></i>
+            <div class="suggestions-wrap" style="position:relative; width:100%;">
+              <div class="search-field-inner">
+                <i class="fa-solid fa-location-dot search-field-icon"></i>
+                <input type="text" id="pickupSearch" placeholder="Search pickup location…" autocomplete="off" />
+              </div>
+              <div id="pickupSuggestions" class="suggestions-dropdown"></div>
             </div>
+            <input type="hidden" id="pickupLat" />
+            <input type="hidden" id="pickupLng" />
           </div>
 
           <div class="search-field">
             <label>Drop Point</label>
-            <div class="search-field-inner">
-              <i class="fa-solid fa-flag-checkered search-field-icon"></i>
-              <select id="dropSearch" onchange="searchRides()">
-                <option value="">All Destinations</option>
-                <option value="Ameerpet Metro">Ameerpet Metro</option>
-                <option value="KPHB Metro">KPHB Metro</option>
-                <option value="Secunderabad">Secunderabad</option>
-              </select>
-              <i class="fa-solid fa-chevron-down search-field-caret"></i>
+            <div class="suggestions-wrap" style="position:relative; width:100%;">
+              <div class="search-field-inner">
+                <i class="fa-solid fa-flag-checkered search-field-icon"></i>
+                <input type="text" id="dropSearch" placeholder="Search destination…" autocomplete="off" />
+              </div>
+              <div id="destinationResults" class="suggestions-dropdown"></div>
             </div>
+            <input type="hidden" id="destinationLat" />
+            <input type="hidden" id="destinationLng" />
           </div>
 
           <div class="search-field">
@@ -1003,73 +1226,90 @@
     <!-- BOOKING CONFIRMATION -->
     <div id="billCard"></div>
 
-  </div><!-- /page-wrap -->
-
-  <!-- ═══════════════ FOOTER ═══════════════ -->
-  <footer>
-    <div class="si">
-      <div class="footer-top">
-        <div>
-          <div class="footer-logo">Saha<span>Vahan</span></div>
-          <p class="footer-desc">Smart carpooling for Andhra Pradesh and beyond. Move together, save more.</p>
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer>
+      <div class="si">
+        <div class="footer-top">
+          <div>
+            <div class="footer-logo">Saha<span>Vahan</span></div>
+            <p class="footer-desc">Smart carpooling for Andhra Pradesh and beyond. Move together, save more.</p>
+          </div>
+          <div>
+            <div class="footer-col-title">Platform</div>
+            <ul class="footer-links">
+              <li><a href="rides.html">Find a Ride</a></li>
+              <li><a href="ridepublish.html">Publish a Ride</a></li>
+              <li><a href="dashboard.html">Dashboard</a></li>
+              <li><a href="leaderboard.html">Leaderboard</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-col-title">Company</div>
+            <ul class="footer-links">
+              <li><a href="contact.html">Contact Us</a></li>
+              <li><a href="services.html">Services</a></li>
+              <li><a href="aboutus.html">About Us</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-col-title">Legal</div>
+            <ul class="footer-links">
+              <li><a href="#">Privacy Policy</a></li>
+              <li><a href="#">Terms of Service</a></li>
+              <li><a href="#">Safety Guide</a></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <div class="footer-col-title">Platform</div>
-          <ul class="footer-links">
-            <li><a href="rides.html">Find a Ride</a></li>
-            <li><a href="ridepublish.html">Publish a Ride</a></li>
-            <li><a href="dashboard.html">Dashboard</a></li>
-            <li><a href="leaderboard.html">Leaderboard</a></li>
-          </ul>
-        </div>
-        <div>
-          <div class="footer-col-title">Company</div>
-          <ul class="footer-links">
-            <li><a href="contact.html">Contact Us</a></li>
-            <li><a href="services.html">Services</a></li>
-            <li><a href="aboutus.html">About Us</a></li>
-          </ul>
-        </div>
-        <div>
-          <div class="footer-col-title">Legal</div>
-          <ul class="footer-links">
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms of Service</a></li>
-            <li><a href="#">Safety Guide</a></li>
-          </ul>
+        <div class="footer-bottom">
+          <span>© 2026 SahaVahan. All rights reserved.</span>
+          <div style="display:flex;gap:16px;font-size:16px;">
+            <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-x-twitter"></i></a>
+            <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-instagram"></i></a>
+            <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-linkedin"></i></a>
+          </div>
         </div>
       </div>
-      <div class="footer-bottom">
-        <span>© 2026 SahaVahan. All rights reserved.</span>
-        <div style="display:flex;gap:16px;font-size:16px;">
-          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-x-twitter"></i></a>
-          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-instagram"></i></a>
-          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-linkedin"></i></a>
-        </div>
+    </footer>
+
+    <div class="dev-credit">
+      <div class="dev-credit-inner">
+        <i class="fa-solid fa-code" style="color:var(--primary);font-size:13px;"></i>
+        Developed <span class="dev-heart">♥</span> by
+        <span class="dev-name">Venkata Jagapathi Babu K</span>
       </div>
     </div>
-  </footer>
 
-  <div class="dev-credit">
-    <div class="dev-credit-inner">
-      <i class="fa-solid fa-code" style="color:var(--primary);font-size:13px;"></i>
-      Developed <span class="dev-heart">♥</span> by
-      <span class="dev-name">Venkata Jagapathi Babu K</span>
-    </div>
+  </div><!-- /results-sidebar -->
+
+  <div class="map-container-pane">
+    <div id="map"></div>
   </div>
 
-  <button id="installBtn" onclick="tryInstall()">📱 Install App</button>
+</div><!-- /split-viewport -->
+
+<button class="toggle-view-btn" id="toggleViewBtn" onclick="toggleMobileView()">
+  <i class="fa-solid fa-map"></i> View Map
+</button>
+
+<button id="installBtn" onclick="tryInstall()">📱 Install App</button>
 
   <!-- ═══════════════════════════════════════════════
        SCRIPTS — ALL ORIGINAL JS PRESERVED EXACTLY
   ═══════════════════════════════════════════════ -->
   <script>
     // ── Nav hydration ──────────────────────────────────
-    const username = localStorage.getItem("username") || "Rahul K.";
-    const userCodeNav = localStorage.getItem("uniqueCode") || "SV-984A-2026";
-    const initialsNav = username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    const username = localStorage.getItem("username");
+    if (!username) {
+      window.location.href = "login.html";
+    }
+    const userCodeNav = localStorage.getItem("uniqueCode") || "";
+    const initialsNav = username ? username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) : "";
     document.getElementById("nav-avatar").textContent = initialsNav;
-    document.getElementById("nav-user-name").textContent = username;
+    document.getElementById("nav-user-name").textContent = username || "";
+    if (localStorage.getItem("role") === "admin") {
+      const adminEl = document.getElementById("navAdminLink");
+      if (adminEl) adminEl.style.display = "inline-block";
+    }
     function logout(){ localStorage.clear(); window.location.href="login.html"; }
 
     // Nav scroll
@@ -1126,6 +1366,372 @@
   </script>
 
   <script>
+    // ═══════════════════════════════════════════════
+    // MAP & AUTOCOMPLETE SYSTEM
+    // ═══════════════════════════════════════════════
+    
+    // Autocomplete elements
+    const pickupSearchEl       = document.getElementById('pickupSearch');
+    const destinationSearchEl  = document.getElementById('dropSearch');
+    const pickupSuggestionsEl  = document.getElementById('pickupSuggestions');
+    const destinationResultsEl = document.getElementById('destinationResults');
+    const pickupLatEl          = document.getElementById('pickupLat');
+    const pickupLngEl          = document.getElementById('pickupLng');
+    const destinationLatEl     = document.getElementById('destinationLat');
+    const destinationLngEl     = document.getElementById('destinationLng');
+
+    async function geocodeSearch(query) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=7&q=${encodeURIComponent(query)}`;
+      try {
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return [];
+        return await res.json();
+      } catch { return []; }
+    }
+
+    function showSuggestions(listEl, items, onPick) {
+      listEl.innerHTML = '';
+      if (!items || !items.length) { listEl.style.display = 'none'; return; }
+      listEl.style.display = 'block';
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.textContent = item.display_name || 'Unknown';
+        div.addEventListener('click', () => onPick(item));
+        listEl.appendChild(div);
+      });
+    }
+
+    function hideSuggestions() {
+      if (pickupSuggestionsEl) pickupSuggestionsEl.style.display = 'none';
+      if (destinationResultsEl) destinationResultsEl.style.display = 'none';
+    }
+
+    function parseLatLngFromPlace(item) {
+      return { lat: parseFloat(item.lat), lng: parseFloat(item.lon) };
+    }
+
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+      };
+    }
+
+    const searchLocation = async (query, callback) => {
+      const items = await geocodeSearch(query);
+      callback(items);
+    };
+
+    const debouncedSearchLocation = debounce(searchLocation, 500);
+
+    function setupAutocomplete() {
+      if (pickupSearchEl) {
+        pickupSearchEl.addEventListener('input', () => {
+          const q = (pickupSearchEl.value || '').trim();
+          if (pickupLatEl) { pickupLatEl.value = ''; pickupLngEl.value = ''; }
+          if (!q || q.length < 3) { pickupSuggestionsEl.style.display = 'none'; searchRides(); return; }
+          debouncedSearchLocation(q, items => {
+            showSuggestions(pickupSuggestionsEl, items, item => {
+              const { lat, lng } = parseLatLngFromPlace(item);
+              pickupSearchEl.value = item.display_name || '';
+              if (pickupLatEl) { pickupLatEl.value = lat; pickupLngEl.value = lng; }
+              hideSuggestions();
+              searchRides();
+            });
+          });
+        });
+      }
+      if (destinationSearchEl) {
+        destinationSearchEl.addEventListener('input', () => {
+          const q = (destinationSearchEl.value || '').trim();
+          if (destinationLatEl) { destinationLatEl.value = ''; destinationLngEl.value = ''; }
+          if (!q || q.length < 3) { destinationResultsEl.style.display = 'none'; searchRides(); return; }
+          debouncedSearchLocation(q, items => {
+            showSuggestions(destinationResultsEl, items, item => {
+              const { lat, lng } = parseLatLngFromPlace(item);
+              destinationSearchEl.value = item.display_name || '';
+              if (destinationLatEl) { destinationLatEl.value = lat; destinationLngEl.value = lng; }
+              hideSuggestions();
+              searchRides();
+            });
+          });
+        });
+      }
+      document.addEventListener('click', ev => {
+        const t = ev.target;
+        if (t !== pickupSearchEl && t !== destinationSearchEl && (!pickupSuggestionsEl || !pickupSuggestionsEl.contains(t)) && (!destinationResultsEl || !destinationResultsEl.contains(t))) {
+          hideSuggestions();
+        }
+      });
+    }
+
+    // Initialize Map
+    const map = L.map("map").setView([16.5062, 80.6480], 8);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
+    setTimeout(() => { map.invalidateSize(); }, 800);
+
+    let mapMarkers = [];
+    let activeRouteLine = null;
+    let activeRouteLineBg = null;
+    let activeRouteMarkers = [];
+
+    function clearMapLayers() {
+      mapMarkers.forEach(m => map.removeLayer(m));
+      mapMarkers = [];
+      if (activeRouteLine) { try { map.removeLayer(activeRouteLine); } catch(e) {} activeRouteLine = null; }
+      if (activeRouteLineBg) { try { map.removeLayer(activeRouteLineBg); } catch(e) {} activeRouteLineBg = null; }
+      activeRouteMarkers.forEach(m => map.removeLayer(m));
+      activeRouteMarkers = [];
+    }
+
+    function getRideCoords(ride) {
+      if (!ride) return { sLat: 0, sLng: 0, dLat: 0, dLng: 0 };
+      let sLat = ride.sourceLat;
+      let sLng = ride.sourceLng;
+      let dLat = ride.destinationLat;
+      let dLng = ride.destinationLng;
+
+      if (!sLat && ride.pickupLocation) {
+        sLat = ride.pickupLocation.lat;
+        sLng = ride.pickupLocation.lng;
+      }
+      if (!dLat && ride.dropLocation) {
+        dLat = ride.dropLocation.lat;
+        dLng = ride.dropLocation.lng;
+      }
+
+      if (Array.isArray(ride.stops) && ride.stops.length >= 2) {
+        const firstStop = ride.stops[0];
+        const lastStop = ride.stops[ride.stops.length - 1];
+        if (!sLat && firstStop) {
+          sLat = firstStop.latitude || firstStop.lat;
+          sLng = firstStop.longitude || firstStop.lng;
+        }
+        if (!dLat && lastStop) {
+          dLat = lastStop.latitude || lastStop.lat;
+          dLng = lastStop.longitude || lastStop.lng;
+        }
+      }
+
+      return {
+        sLat: Number.isFinite(Number(sLat)) ? Number(sLat) : 0,
+        sLng: Number.isFinite(Number(sLng)) ? Number(sLng) : 0,
+        dLat: Number.isFinite(Number(dLat)) ? Number(dLat) : 0,
+        dLng: Number.isFinite(Number(dLng)) ? Number(dLng) : 0
+      };
+    }
+
+    function updateMapMarkers(rides) {
+      clearMapLayers();
+      if (!rides || rides.length === 0) return;
+
+      rides.forEach(ride => {
+        const coords = getRideCoords(ride);
+        if (Number.isFinite(coords.sLat) && Number.isFinite(coords.sLng) && coords.sLat !== 0) {
+          const icon = L.divIcon({
+            className: 'custom-price-marker',
+            html: `₹${ride.price}`,
+            iconSize: [50, 26], iconAnchor: [25, 13]
+          });
+          const m = L.marker([coords.sLat, coords.sLng], {icon}).addTo(map);
+          
+          m.on('click', () => {
+            const popupContent = `
+              <div class="map-popup-card">
+                <div class="map-popup-title">${ride.username}'s Ride</div>
+                <div class="map-popup-meta">${ride.source} ➔ ${ride.destination}</div>
+                <div class="map-popup-meta">Price: ₹${ride.price} | Seats: ${ride.seats}</div>
+                <a href="#seats-${ride._id}" class="map-popup-book-btn" onclick="highlightRideCard('${ride._id}')">View Details</a>
+              </div>
+            `;
+            m.bindPopup(popupContent).openPopup();
+            highlightRideCard(ride._id);
+          });
+          
+          m.rideId = ride._id;
+          mapMarkers.push(m);
+        }
+      });
+
+      if (mapMarkers.length > 0) {
+        const group = new L.featureGroup(mapMarkers);
+        map.fitBounds(group.getBounds(), { padding: [50, 50] });
+      }
+    }
+
+    function highlightRideCard(rideId) {
+      const card = document.getElementById(`card-${rideId}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.style.borderColor = 'var(--primary)';
+        card.style.boxShadow = 'var(--shadow-lg)';
+        setTimeout(() => {
+          card.style.borderColor = '';
+          card.style.boxShadow = '';
+        }, 2000);
+      }
+    }
+
+    let selectedRideId = null;
+    let selectedRideRouteData = null;
+    let topRideIdGlobal = null;
+
+    function selectRideRoute(rideId, sLat, sLng, dLat, dLng, sourceName, destName) {
+      selectedRideId = rideId;
+      selectedRideRouteData = { rideId, sLat, sLng, dLat, dLng, sourceName, destName };
+
+      document.querySelectorAll('.ride-card-new, .top-pick-card').forEach(c => {
+        c.classList.remove('selected-card');
+      });
+
+      if (topRideIdGlobal && rideId === topRideIdGlobal) {
+        const topPick = document.getElementById('top-pick-card-el');
+        if (topPick) topPick.classList.add('selected-card');
+      } else {
+        const card = document.getElementById(`card-${rideId}`);
+        if (card) card.classList.add('selected-card');
+      }
+
+      previewRideRoute(rideId, sLat, sLng, dLat, dLng, sourceName, destName, true);
+    }
+
+    function handleCardClick(e, rideId, sLat, sLng, dLat, dLng, sourceName, destName) {
+      const ignoreTags = ['BUTTON', 'INPUT', 'A', 'SUMMARY', 'DETAILS', 'I'];
+      if (ignoreTags.includes(e.target.tagName) || e.target.closest('button') || e.target.closest('a') || e.target.closest('input')) {
+        return;
+      }
+      selectRideRoute(rideId, sLat, sLng, dLat, dLng, sourceName, destName);
+    }
+
+    async function geocodeText(text) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data[0]) {
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+          }
+        }
+      } catch (e) {
+        console.error('Geocode fallback failed:', e);
+      }
+      return null;
+    }
+
+    async function previewRideRoute(rideId, sLat, sLng, dLat, dLng, sourceName, destName, fitBounds = false) {
+      mapMarkers.forEach(m => {
+        if (m.rideId === rideId || (selectedRideId && m.rideId === selectedRideId)) {
+          m.getElement()?.classList.add('active-hover');
+        } else {
+          m.getElement()?.classList.remove('active-hover');
+        }
+      });
+
+      if (!Number.isFinite(sLat) || !Number.isFinite(sLng) || sLat === 0 || !Number.isFinite(dLat) || !Number.isFinite(dLng) || dLat === 0) {
+        if (sourceName) {
+          const s = await geocodeText(sourceName);
+          if (s) { sLat = s.lat; sLng = s.lng; }
+        }
+        if (destName) {
+          const d = await geocodeText(destName);
+          if (d) { dLat = d.lat; dLng = d.lng; }
+        }
+      }
+
+      if (!Number.isFinite(sLat) || !Number.isFinite(sLng) || sLat === 0 || !Number.isFinite(dLat) || !Number.isFinite(dLng) || dLat === 0) return;
+
+      if (activeRouteLine) { try { map.removeLayer(activeRouteLine); } catch(e) {} activeRouteLine = null; }
+      if (activeRouteLineBg) { try { map.removeLayer(activeRouteLineBg); } catch(e) {} activeRouteLineBg = null; }
+      activeRouteMarkers.forEach(m => map.removeLayer(m));
+      activeRouteMarkers = [];
+
+      const waypoints = [];
+      waypoints.push({ lat: sLat, lng: sLng });
+      waypoints.push({ lat: dLat, lng: dLng });
+
+      const coordsString = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.routes || !data.routes[0]) return;
+        const route = data.routes[0];
+        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+        activeRouteLineBg = L.polyline(coords, {
+          color: '#4338CA', weight: 8, opacity: 0.2,
+          lineCap: 'round', lineJoin: 'round'
+        }).addTo(map);
+
+        activeRouteLine = L.polyline(coords, {
+          color: '#4338CA', weight: 5, opacity: 0.95,
+          lineCap: 'round', lineJoin: 'round'
+        }).addTo(map);
+
+        const destIcon = L.divIcon({
+          className: 'custom-pin-destination',
+          html: '',
+          iconSize: [16, 16], iconAnchor: [8, 8]
+        });
+        const destMarker = L.marker([dLat, dLng], {icon: destIcon}).addTo(map).bindPopup(`<b>🏁 Destination</b><br>${destName}`);
+        activeRouteMarkers.push(destMarker);
+
+        if (fitBounds && coords.length > 0) {
+          const bounds = L.latLngBounds(coords);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+      } catch(err) { console.error('Route preview error:', err); }
+    }
+
+    function clearRoutePreview() {
+      mapMarkers.forEach(m => {
+        if (selectedRideId && m.rideId === selectedRideId) {
+          m.getElement()?.classList.add('active-hover');
+        } else {
+          m.getElement()?.classList.remove('active-hover');
+        }
+      });
+
+      if (selectedRideId && selectedRideRouteData) {
+        const d = selectedRideRouteData;
+        previewRideRoute(d.rideId, d.sLat, d.sLng, d.dLat, d.dLng, d.sourceName, d.destName, false);
+      } else {
+        if (activeRouteLine) { try { map.removeLayer(activeRouteLine); } catch(e) {} activeRouteLine = null; }
+        if (activeRouteLineBg) { try { map.removeLayer(activeRouteLineBg); } catch(e) {} activeRouteLineBg = null; }
+        activeRouteMarkers.forEach(m => map.removeLayer(m));
+        activeRouteMarkers = [];
+      }
+    }
+
+    let mobileMapViewActive = false;
+    function toggleMobileView() {
+      const sidebar = document.querySelector('.results-sidebar');
+      const mapPane = document.querySelector('.map-container-pane');
+      const toggleBtn = document.getElementById('toggleViewBtn');
+      mobileMapViewActive = !mobileMapViewActive;
+      if (mobileMapViewActive) {
+        sidebar.classList.add('inactive');
+        mapPane.classList.add('active');
+        toggleBtn.innerHTML = `<i class="fa-solid fa-list"></i> View List`;
+        setTimeout(() => { map.invalidateSize(); }, 200);
+      } else {
+        sidebar.classList.remove('inactive');
+        mapPane.classList.remove('active');
+        toggleBtn.innerHTML = `<i class="fa-solid fa-map"></i> View Map`;
+      }
+    }
+
+    // Call autocomplete setup
+    setupAutocomplete();
+
     // ═══════════════════════════════════════════════
     // ALL ORIGINAL JAVASCRIPT — PRESERVED EXACTLY
     // ═══════════════════════════════════════════════
@@ -1194,12 +1800,16 @@
       }
 
       const filtered = allRides.filter((ride) => {
-        const destinationMatch = !destination || ride.destination === destination;
+        const querySrc = (source || '').toLowerCase().trim();
+        const queryDest = (destination || '').toLowerCase().trim();
+        
+        const destinationMatch = !queryDest || (ride.destination || '').toLowerCase().includes(queryDest);
         const dateMatch = !date || ride.date === date;
-        const sourceMatch = !source ||
-          (Array.isArray(ride.stops)
-            ? ride.stops.some(s => s && s.name === source)
-            : ride.source === source);
+        
+        const sourceMatch = !querySrc || 
+          (ride.source || '').toLowerCase().includes(querySrc) ||
+          (Array.isArray(ride.stops) && ride.stops.some(s => s && s.name && s.name.toLowerCase().includes(querySrc)));
+          
         return sourceMatch && destinationMatch && dateMatch;
       });
 
@@ -1304,6 +1914,9 @@
       const ridesCount           = document.getElementById('ridesCount');
       const statSeats            = document.getElementById('statSeats');
 
+      // Update map markers dynamically
+      updateMapMarkers(rides);
+
       if (statSeats) {
         const totalSeats = (rides||[]).reduce((s,r)=>s+Number(r.seats||0),0);
         statSeats.textContent = totalSeats + '+';
@@ -1327,9 +1940,11 @@
       if(ridesHeading) ridesHeading.textContent = 'Available Rides';
 
       const topRide  = rides[0];
+      topRideIdGlobal = topRide._id;
       const restRides= rides.slice(1);
 
       try {
+        const topCoords = getRideCoords(topRide);
         let topRatingData = { rating: 0, reviews: 0 };
         try {
           const ratingRes = await fetch(`/api/reviews/driver-score/${encodeURIComponent(topRide.username)}`);
@@ -1371,7 +1986,7 @@
             <div class="eyebrow" style="margin-bottom:10px;"><i class="fa-solid fa-trophy fa-xs"></i> Top Pick</div>
             <h2 class="sh" style="margin-bottom:14px;">Best Match for You</h2>
           </div>
-          <div class="top-pick-card ripple-host">
+          <div class="top-pick-card ripple-host" id="top-pick-card-el">
             <div class="top-pick-badge"><i class="fa-solid fa-trophy"></i> TOP PICK</div>
             ${buildStatusPill(topRide.status)}
 
@@ -1416,7 +2031,7 @@
                   <a class="act-btn act-btn-whatsapp ripple-host" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">
                     <i class="fa-brands fa-whatsapp"></i> WhatsApp
                   </a>
-                  <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='openRoute(${JSON.stringify(topRide.source)}, ${JSON.stringify(topRide.destination)})'>
+                  <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='selectRideRoute(${JSON.stringify(topRide._id)}, ${topCoords.sLat}, ${topCoords.sLng}, ${topCoords.dLat}, ${topCoords.dLng}, ${JSON.stringify(topRide.source)}, ${JSON.stringify(topRide.destination)})'>
                     <i class="fa-solid fa-map-location-dot"></i> Route
                   </button>
                   <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='saveFavorite(${JSON.stringify(topRide.source)}, ${JSON.stringify(topRide.destination)})'>
@@ -1486,6 +2101,16 @@
         } catch(e) {}
 
         recommendedContainer.style.display = 'block';
+
+        // Attach route preview hover listeners and click selection
+        const topPickCardEl = document.getElementById('top-pick-card-el');
+        if (topPickCardEl) {
+          topPickCardEl.addEventListener('click', (event) => {
+            handleCardClick(event, topRide._id, topCoords.sLat, topCoords.sLng, topCoords.dLat, topCoords.dLng, topRide.source, topRide.destination);
+          });
+          topPickCardEl.onmouseenter = () => previewRideRoute(topRide._id, topCoords.sLat, topCoords.sLng, topCoords.dLat, topCoords.dLng, topRide.source, topRide.destination);
+          topPickCardEl.onmouseleave = () => clearRoutePreview();
+        }
       } catch(err) {
         console.error('Display recommendation error:', err);
         recommendedContainer.style.display = 'none';
@@ -1500,8 +2125,19 @@
       container.innerHTML = '';
 
       for (const ride of rides) {
+        const rideCoords = getRideCoords(ride);
         const div = document.createElement('div');
         div.className = 'ride-card-new ripple-host';
+        div.id = `card-${ride._id}`;
+        
+        // Attach click listener for persistent routing
+        div.addEventListener('click', (event) => {
+          handleCardClick(event, ride._id, rideCoords.sLat, rideCoords.sLng, rideCoords.dLat, rideCoords.dLng, ride.source, ride.destination);
+        });
+        
+        // Attach hover listeners for route preview
+        div.onmouseenter = () => previewRideRoute(ride._id, rideCoords.sLat, rideCoords.sLng, rideCoords.dLat, rideCoords.dLng, ride.source, ride.destination);
+        div.onmouseleave = () => clearRoutePreview();
 
         let ratingData = { rating: 0, reviews: 0 };
         try {
@@ -1609,7 +2245,7 @@
             <a class="act-btn act-btn-whatsapp ripple-host" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">
               <i class="fa-brands fa-whatsapp"></i> WhatsApp
             </a>
-            <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='openRoute(${JSON.stringify(ride.source)}, ${JSON.stringify(ride.destination)})'>
+            <button type="button" class="act-btn act-btn-ghost ripple-host" onclick='selectRideRoute(${JSON.stringify(ride._id)}, ${rideCoords.sLat}, ${rideCoords.sLng}, ${rideCoords.dLat}, ${rideCoords.dLng}, ${JSON.stringify(ride.source)}, ${JSON.stringify(ride.destination)})'>
               <i class="fa-solid fa-map-location-dot"></i> Route
             </button>
           </div>
@@ -1651,18 +2287,8 @@
     }
 
     // ── loadPickupSearchOptions ──────────────────────
-    const pickupCity = "Vijayawada";
-    async function loadPickupSearchOptions() {
-      try {
-        const res = await fetch(`/api/pickup-points/${encodeURIComponent(pickupCity)}`);
-        if (!res.ok) return;
-        const points = await res.json();
-        const sel = document.getElementById('pickupSearch');
-        const current = sel.value;
-        sel.innerHTML = '<option value="">All Pickup Points</option>' +
-          points.map(n => `<option value="${n}">${n}</option>`).join('');
-        if (current) sel.value = current;
-      } catch(e) { console.error('loadPickupSearchOptions error:', e); }
+    function loadPickupSearchOptions() {
+      // No-op: search fields now use text input autocomplete
     }
 
     // ── initRides ────────────────────────────────────

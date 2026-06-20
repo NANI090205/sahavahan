@@ -4,9 +4,9 @@
 // Mount in server.js / app.js:
 //   const otpRoutes = require('./routes/otp');
 //   app.use('/api/otp', otpRoutes);
-
 const express = require('express');
 const router  = express.Router();
+const auth    = require('../middleware/auth');
 
 const Ride       = require('../models/Ride');
 const BookedRide = require('../models/BookedRide');
@@ -40,7 +40,7 @@ const tryBadgeRefresh = async (driverUsername) => {
 // Body: { rideId, bookingId, otp }
 // Called by driver after passenger gives boarding OTP
 // ─────────────────────────────────────────────────────────────
-router.post('/verify-boarding', async (req, res) => {
+router.post('/verify-boarding', auth, async (req, res) => {
   try {
     const { rideId, bookingId, otp } = req.body;
 
@@ -51,6 +51,11 @@ router.post('/verify-boarding', async (req, res) => {
     const ride = await Ride.findById(rideId);
     if (!ride) return res.status(404).json({ message: 'Ride not found.' });
 
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
+    }
+
     if (ride.status !== 'Scheduled') {
       return res.status(400).json({
         message: `Boarding OTP can only be verified for Scheduled rides. Current status: ${ride.status}`
@@ -60,13 +65,27 @@ router.post('/verify-boarding', async (req, res) => {
     const booking = await BookedRide.findById(bookingId);
     if (!booking) return res.status(404).json({ message: 'Booking not found.' });
 
-if (booking.rideId.toString() !== rideId) {
+    if (booking.rideId.toString() !== rideId) {
       return res.status(400).json({ message: 'Booking does not belong to this ride.' });
     }
 
 
     if (booking.otpVerified) {
       return res.status(400).json({ message: 'Boarding OTP already verified for this booking.' });
+    }
+
+    // Expiry Check
+    if (booking.boardingOTPExpiry && new Date() > booking.boardingOTPExpiry) {
+      return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Attempt limit Check
+    if (booking.boardingOtpAttempts >= 5) {
+      booking.rideOTP = "";
+      booking.boardingOTP = "";
+      booking.boardingOTPExpiry = null;
+      await booking.save();
+      return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
     }
 
     const storedOtp = booking.boardingOTP || booking.rideOTP || '';
@@ -76,11 +95,23 @@ if (booking.rideId.toString() !== rideId) {
     }
 
     if (String(otp).trim() !== String(storedOtp).trim()) {
+      booking.boardingOtpAttempts = (booking.boardingOtpAttempts || 0) + 1;
+      if (booking.boardingOtpAttempts >= 5) {
+        booking.rideOTP = "";
+        booking.boardingOTP = "";
+        booking.boardingOTPExpiry = null;
+      }
+      await booking.save();
+      if (booking.boardingOtpAttempts >= 5) {
+        return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+      }
       return res.status(400).json({ message: 'Invalid Boarding OTP. Please check and try again.' });
     }
 
     // ✅ OTP correct — mark booking verified
     booking.otpVerified = true;
+    booking.boardingOtpAttempts = 0;
+    booking.status = 'Boarded';
     await booking.save();
 
 
@@ -88,6 +119,15 @@ if (booking.rideId.toString() !== rideId) {
     ride.status       = 'In Progress';
     ride.rideStartedAt = new Date();
     await ride.save();
+
+    // Set all boarded bookings of this ride to In Progress
+    const bookings = await BookedRide.find({ rideId });
+    for (const b of bookings) {
+      if (b.status === 'Boarded' || b.otpVerified) {
+        b.status = 'In Progress';
+        await b.save();
+      }
+    }
 
     // Notifications
     await Promise.all([
@@ -123,7 +163,7 @@ if (booking.rideId.toString() !== rideId) {
 // Called by passenger at drop point
 // Automatically completes ride after all passengers verify
 // ─────────────────────────────────────────────────────────────
-router.post('/verify-drop', async (req, res) => {
+router.post('/verify-drop', auth, async (req, res) => {
   try {
     const { rideId, bookingId, otp } = req.body;
 
@@ -133,6 +173,11 @@ router.post('/verify-drop', async (req, res) => {
 
     const ride = await Ride.findById(rideId);
     if (!ride) return res.status(404).json({ message: 'Ride not found.' });
+
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
+    }
 
     if (ride.status !== 'In Progress') {
       return res.status(400).json({
@@ -151,6 +196,19 @@ router.post('/verify-drop', async (req, res) => {
       return res.status(400).json({ message: 'Drop OTP already verified for this booking.' });
     }
 
+    // Expiry Check
+    if (booking.dropOTPExpiry && new Date() > booking.dropOTPExpiry) {
+      return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Attempt limit Check
+    if (booking.dropOtpAttempts >= 5) {
+      booking.dropOTP = "";
+      booking.dropOTPExpiry = null;
+      await booking.save();
+      return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+    }
+
     const storedDropOtp = booking.dropOTP || '';
     if (!storedDropOtp) {
       return res.status(400).json({ message: 'No drop OTP found for this booking.' });
@@ -164,6 +222,15 @@ router.post('/verify-drop', async (req, res) => {
     console.log("ride status:", ride?.status);
 
     if (String(otp).trim() !== String(storedDropOtp).trim()) {
+      booking.dropOtpAttempts = (booking.dropOtpAttempts || 0) + 1;
+      if (booking.dropOtpAttempts >= 5) {
+        booking.dropOTP = "";
+        booking.dropOTPExpiry = null;
+      }
+      await booking.save();
+      if (booking.dropOtpAttempts >= 5) {
+        return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+      }
       return res.status(400).json({ message: 'Invalid Drop OTP. Please check and try again.' });
     }
 
@@ -171,6 +238,8 @@ router.post('/verify-drop', async (req, res) => {
     // ✅ Drop OTP correct
     booking.dropOTPVerified = true;
     booking.droppedAt = new Date();
+    booking.dropOtpAttempts = 0;
+    booking.status = 'Completed';
     await booking.save();
 
     // Check if ALL bookings for this ride have drop OTP verified
@@ -188,15 +257,34 @@ router.post('/verify-drop', async (req, res) => {
       await ride.save();
       rideCompleted = true;
 
-      // Record history
+      // Record history for driver
       await RideHistory.create({
         username:    ride.username,
         type:        'Completed',
         source:      ride.source,
         destination: ride.destination,
         date:        ride.date,
-        amount:      ride.price
+        amount:      ride.price,
+        rideId:      String(ride._id),
+        passenger:   ""
       });
+
+      // Record history for passengers
+      const bookingsForHistory = await BookedRide.find({ rideId });
+      for (const booking of bookingsForHistory) {
+        if (booking.status === 'Completed') {
+          await RideHistory.create({
+            username:    booking.bookedBy,
+            type:        'Completed',
+            source:      ride.source,
+            destination: ride.destination,
+            date:        ride.date,
+            amount:      booking.totalPrice,
+            rideId:      String(ride._id),
+            passenger:   booking.bookedBy
+          });
+        }
+      }
 
       // Update driver earnings + CO2
       try {

@@ -1,28 +1,20 @@
 const express = require("express");
 const router = express.Router();
 
-const multer = require("multer");
-
+const { vehicleUpload } = require("../middleware/cloudinaryUpload");
 const Vehicle = require("../models/Vehicle");
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-
-const upload = multer({ storage });
-
 // POST: Add vehicle for a user
-router.post("/add", upload.single("vehiclePhoto"), async (req, res) => {
+router.post("/add", vehicleUpload, async (req, res) => {
   try {
     const acRaw = req.body.acAvailable;
     const acAvailable =
       acRaw === true || acRaw === "true" || acRaw === "1" || acRaw === 1;
+
+    const existingVehicle = await Vehicle.findOne({ vehicleNumber: req.body.vehicleNumber });
+    if (existingVehicle) {
+      return res.status(400).json({ message: "Vehicle number already registered" });
+    }
 
     const vehicle = new Vehicle({
       username: req.body.username,
@@ -31,7 +23,7 @@ router.post("/add", upload.single("vehiclePhoto"), async (req, res) => {
       vehicleNumber: req.body.vehicleNumber,
       vehicleColor: req.body.vehicleColor,
       acAvailable,
-      vehiclePhoto: req.file ? "/uploads/" + req.file.filename : "",
+      vehiclePhoto: req.file ? req.file.path : "",
     });
 
     await vehicle.save();

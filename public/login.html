@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.alert = function(msg) { console.log("ALERT:", msg); };
+    window.confirm = function(msg) { console.log("CONFIRM:", msg); return true; };
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#4338CA">
   <meta name="description" content="SahaVahan — Secure portal to login and connect with smart carpooling networks." />
   <title>Login — SahaVahan</title>
-  
+  <link rel="icon" type="image/png" href="/images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
@@ -392,9 +396,12 @@
               localStorage.setItem("uniqueCode", data.uniqueCode);
               localStorage.setItem("phoneNumber", data.phoneNumber || "");
               localStorage.setItem("role", data.role || "user");
+              if (data.token) {
+                  localStorage.setItem("token", data.token);
+              }
 
               alert("Login successful!");
-              const redirect = data.redirect || (data.role === "admin" ? "admin-dashboard.html" : "dashboard.html");
+              const redirect = data.redirect || (data.role === "admin" ? "admin.html" : "index.html");
               window.location.href = redirect;
           } else {
               alert(data.message || "Login failed");

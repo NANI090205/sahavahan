@@ -8,7 +8,6 @@
   <meta name="theme-color" content="#4338CA">
   <meta name="description" content="SahaVahan — Smart carpooling platform leaderboard. Meet the top drivers and community members." />
   <link rel="apple-touch-icon" href="/images/logo.png" sizes="180x180">
-  <link rel="apple-touch-icon" sizes="180x180" href="/public/logo.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -359,6 +358,8 @@
       <li><a href="rides.html"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
       <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
       <li><a href="leaderboard.html" style="color: var(--primary); background: var(--primary-dim);"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+      <li><a href="profile.html"><i class="fa-solid fa-user-gear" style="font-size:11px;margin-right:5px;"></i>Profile</a></li>
+      <li><a href="admin.html" id="navAdminLink" style="display:none;"><i class="fa-solid fa-shield-halved" style="font-size:11px;margin-right:5px;"></i>Admin Panel</a></li>
     </ul>
     <div class="nav-right">
       <div class="nav-user-pill">
@@ -453,10 +454,17 @@
 
   <script>
     // Navigation / Identity Profile Hydration Runtime Engine
-    const username = localStorage.getItem("username") || "Rahul K.";
-    const initials = username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    const username = localStorage.getItem("username");
+    if (!username) {
+      window.location.href = "login.html";
+    }
+    const initials = username ? username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) : "";
     document.getElementById("nav-avatar").textContent = initials;
-    document.getElementById("nav-user-name").textContent = username;
+    document.getElementById("nav-user-name").textContent = username || "";
+    if (localStorage.getItem("role") === "admin") {
+      const adminEl = document.getElementById("navAdminLink");
+      if (adminEl) adminEl.style.display = "inline-block";
+    }
 
     function logout(){localStorage.clear();window.location.href="login.html";}
 
@@ -547,7 +555,8 @@
           else if(rank === 3) { podiumClass = 'rank-3'; rankSymbol = '🥉'; }
 
           // Derive individual trust scores or map a default premium tier badge
-          const computedTrust = user.trustScore || (5.0 - (index * 0.04)).toFixed(1);
+          const rating = user.averageRating ? user.averageRating.toFixed(1) : (5.0 - (index * 0.05)).toFixed(1);
+          const computedTrust = user.trustScore ?? 100;
 
           const userInitials = user.username ? user.username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) : "UR";
 
@@ -561,12 +570,12 @@
               <div class="user-avatar-wrap">${userInitials}</div>
               <div class="meta">
                 <div class="name">${user.username}</div>
-                <div class="trust-score-pill"><i class="fa-solid fa-shield-halved"></i> ${computedTrust} Rating</div>
+                <div class="trust-score-pill"><i class="fa-solid fa-shield-halved"></i> Trust Score: ${computedTrust}</div>
               </div>
             </div>
             <div class="card-right">
-              <div class="rating"><i class="fa-solid fa-star"></i> ${user.rewardPoints}</div>
-              <div class="count">${user.totalReferrals} Referrals</div>
+              <div class="rating"><i class="fa-solid fa-star"></i> ${rating}</div>
+              <div class="count">${user.completedRides || 0} Rides • ${user.totalReferrals || 0} Referrals</div>
             </div>
           `;
           container.appendChild(div);

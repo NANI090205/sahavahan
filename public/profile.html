@@ -302,16 +302,58 @@
     .vs-unverified::before { background: var(--rose); }
     @keyframes vPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+    /* Verification buttons */
+    .profile-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-dim);
+      color: var(--primary);
+      border: 1px solid rgba(67,56,202,0.15);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: none;
+      white-space: nowrap;
+    }
+    .profile-btn:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
     /* Security form */
     .sec-field { margin-bottom: 16px; }
     .sec-label { font-size: 12.5px; font-weight: 600; color: var(--text-muted); margin-bottom: 7px; display: block; letter-spacing: 0.3px; }
+    .sec-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
     .sec-input {
       width: 100%; background: var(--bg-surface-muted); border: 1px solid var(--border);
-      border-radius: 11px; padding: 12px 14px;
+      border-radius: 11px; padding: 12px 40px 12px 14px;
       font-size: 14px; font-family: var(--font-body); color: var(--text-main);
       outline: none; transition: border-color 0.2s, box-shadow 0.2s;
     }
     .sec-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+    .eye-toggle {
+      position: absolute;
+      right: 14px;
+      color: var(--text-muted);
+      cursor: none;
+      font-size: 14px;
+      transition: color 0.2s;
+      z-index: 10;
+    }
+    .eye-toggle:hover {
+      color: var(--primary);
+    }
     #passwordMsg {
       font-size: 13px; margin-top: 12px; padding: 10px 14px;
       border-radius: 10px; display: none;
@@ -489,6 +531,7 @@
       <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
       <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
       <li><a href="profile.html" class="active"><i class="fa-solid fa-user-gear" style="font-size:11px;margin-right:5px;"></i>Profile</a></li>
+      <li><a href="admin.html" id="navAdminLink" style="display:none;"><i class="fa-solid fa-shield-halved" style="font-size:11px;margin-right:5px;"></i>Admin Panel</a></li>
     </ul>
     <div class="nav-right">
       <div class="nav-user-pill">
@@ -506,10 +549,10 @@
       <div class="profile-hero-inner">
         <div class="profile-avatar-wrap">
           <div class="profile-avatar-initial" id="profileAvatarInitial">?</div>
-          <img id="profileImage" src="/uploads/default.png" alt="Profile Photo" class="profile-avatar-img" style="display:none;" />
+          <img id="profileImage" src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234338CA"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>' alt="Profile Photo" class="profile-avatar-img" style="display:none;" />
         </div>
         <div class="profile-hero-info">
-          <div class="profile-hero-eyebrow"><i class="fa-solid fa-circle-dot fa-xs"></i> My Profile</div>
+          <div class="profile-hero-eyebrow" id="profileHeroEyebrow"><i class="fa-solid fa-circle-dot fa-xs"></i> My Profile</div>
           <div class="profile-hero-name" id="username">Loading…</div>
           <div class="hero-badges" id="heroBadges">
             <div class="hbadge"><i class="fa-solid fa-shield-halved"></i> <span id="heroTrustScore">—</span> Trust Score</div>
@@ -578,12 +621,15 @@
                 <div class="info-val" id="email">—</div>
               </div>
             </div>
-            <div class="info-row">
-              <div class="info-icon ii-green"><i class="fa-solid fa-phone"></i></div>
-              <div class="info-content">
-                <div class="info-label">Phone Number</div>
-                <div class="info-val" id="phone">—</div>
+            <div class="info-row" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div class="info-icon ii-green"><i class="fa-solid fa-phone"></i></div>
+                <div class="info-content">
+                  <div class="info-label">Phone Number</div>
+                  <div class="info-val" id="phone">—</div>
+                </div>
               </div>
+              <button id="editPhoneBtn" class="profile-btn small-btn" onclick="openPhoneModal()" style="margin-left:auto; border:none; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; background:#e0e7ff; color:#4338ca; font-weight:600;"><i class="fa-solid fa-pen"></i> Edit</button>
             </div>
             <div class="info-row">
               <div class="info-icon ii-purple"><i class="fa-solid fa-fingerprint"></i></div>
@@ -632,30 +678,47 @@
             </div>
             <div class="verif-row">
               <div class="verif-left">
+                <div class="verif-icon ii-green"><i class="fa-solid fa-phone"></i></div>
+                <div>
+                  <div class="verif-label">Phone Number</div>
+                  <div class="verif-sub">Mobile number on file</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div id="phoneVerifStatus" class="vstatus vs-unverified">Not Added</div>
+              </div>
+            </div>
+            <div class="verif-row">
+              <div class="verif-left">
                 <div class="verif-icon ii-blue"><i class="fa-solid fa-id-card"></i></div>
                 <div>
                   <div class="verif-label">Driver Identity</div>
-                  <div class="verif-sub">Government ID check</div>
+                  <div class="verif-sub" id="driverVerifSub">Government ID &amp; Selfie</div>
                 </div>
               </div>
               <div id="driverVerifStatus" class="vstatus vs-unverified">Not Started</div>
+            </div>
+            <!-- Admin remarks on rejection -->
+            <div id="driverRemarksRow" style="display:none;padding:10px 14px;background:rgba(225,29,72,0.06);border-radius:10px;margin:6px 0 2px;border:1px solid rgba(225,29,72,0.15);">
+              <div style="font-size:12px;font-weight:600;color:var(--rose);margin-bottom:4px;"><i class="fa-solid fa-circle-exclamation fa-xs"></i> Admin Remarks</div>
+              <div id="driverRemarksText" style="font-size:12.5px;color:var(--text-muted);"></div>
             </div>
             <div class="verif-row">
               <div class="verif-left">
                 <div class="verif-icon ii-amber"><i class="fa-solid fa-car"></i></div>
                 <div>
                   <div class="verif-label">Vehicle Details</div>
-                  <div class="verif-sub">RC / insurance check</div>
+                  <div class="verif-sub">RC / Insurance documents</div>
                 </div>
               </div>
-              <div id="vehicleVerifStatus" class="vstatus vs-unverified">Not Started</div>
-              <a href="vehicle.html" class="profile-btn">
-  🚗 My Vehicle
-</a>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div id="vehicleVerifStatus" class="vstatus vs-unverified">Not Added</div>
+                <a href="vehicle.html" class="profile-btn">Manage</a>
+              </div>
             </div>
           </div>
-          <div style="margin-top:22px;">
-            <a href="driver-verification.html" class="btn-primary ripple-host" style="width:100%;justify-content:center;">
+          <div style="margin-top:22px;" id="driverVerifCTA">
+            <a href="driver-verification.html" class="btn-primary ripple-host" id="driverVerifBtn" style="width:100%;justify-content:center;">
               <i class="fa-solid fa-id-badge"></i> Start Driver Verification
             </a>
           </div>
@@ -681,15 +744,24 @@
 
           <div class="sec-field">
             <label class="sec-label" for="currentPassword">Current Password</label>
-            <input type="password" id="currentPassword" class="sec-input" placeholder="Enter current password" />
+            <div class="sec-input-wrap">
+              <input type="password" id="currentPassword" class="sec-input" placeholder="Enter current password" />
+              <i class="fa-solid fa-eye eye-toggle" onclick="togglePasswordVisibility('currentPassword', this)"></i>
+            </div>
           </div>
           <div class="sec-field">
             <label class="sec-label" for="newPassword">New Password</label>
-            <input type="password" id="newPassword" class="sec-input" placeholder="Choose a strong password" />
+            <div class="sec-input-wrap">
+              <input type="password" id="newPassword" class="sec-input" placeholder="Choose a strong password" />
+              <i class="fa-solid fa-eye eye-toggle" onclick="togglePasswordVisibility('newPassword', this)"></i>
+            </div>
           </div>
           <div class="sec-field">
             <label class="sec-label" for="confirmPassword">Confirm New Password</label>
-            <input type="password" id="confirmPassword" class="sec-input" placeholder="Repeat new password" />
+            <div class="sec-input-wrap">
+              <input type="password" id="confirmPassword" class="sec-input" placeholder="Repeat new password" />
+              <i class="fa-solid fa-eye eye-toggle" onclick="togglePasswordVisibility('confirmPassword', this)"></i>
+            </div>
           </div>
 
           <button class="btn-primary ripple-host" style="width:100%;justify-content:center;" onclick="changePassword()">
@@ -780,17 +852,58 @@
 
   <button id="installBtn" onclick="tryInstall()">📱 Install SahaVahan</button>
 
+  <!-- Change Phone Number Modal -->
+  <div id="phoneModal" class="modal-backdrop" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:1000; align-items:center; justify-content:center; padding:20px; transition: opacity 0.3s ease; opacity: 0;">
+    <div class="modal-content" style="background:var(--bg-surface); border:1px solid var(--border); border-radius:20px; max-width:400px; width:100%; padding:30px; box-shadow:var(--shadow-lg); position:relative; transform:scale(0.95); transition:transform 0.3s ease;">
+      <button onclick="closePhoneModal()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--text-main); margin-bottom:10px;">Update Phone Number</h3>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Enter your new mobile number below.</p>
+      
+      <div style="display:flex; flex-direction:column; gap:15px; margin-bottom:25px;">
+        <div style="display:flex; flex-direction:column; gap:7px;">
+          <label style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);" for="newPhoneInput">Phone Number</label>
+          <div style="display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg-surface-muted); align-items:center;">
+            <span style="background:var(--bg-surface-muted); color:var(--text-muted); font-size:14px; font-weight:600; padding:12px 14px; border-right:1px solid var(--border); display:flex; align-items:center; gap:5px;">🇮🇳 +91</span>
+            <input type="tel" id="newPhoneInput" maxlength="10" placeholder="10-digit number" style="flex:1; border:none; padding:12px 14px; font-size:15px; font-family:var(--font-body); outline:none; background:transparent; color:var(--text-main);" />
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button onclick="closePhoneModal()" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); padding:10px 18px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--font-body);">Cancel</button>
+        <button id="savePhoneBtn" onclick="savePhoneNumber()" style="background:var(--primary); border:none; color:#ffffff; padding:10px 18px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--font-body); display:flex; align-items:center; gap:8px;">Save Changes</button>
+      </div>
+      <div id="phoneModalMsg" style="margin-top:15px; font-size:13px; text-align:center; display:none;"></div>
+    </div>
+  </div>
+
   <script src="notification-badge.js"></script>
 
   <script>
     // ══ AUTH ══
-    const username = localStorage.getItem("username");
-    if(!username){ alert('Please login'); window.location.href='login.html'; }
+    const loggedInUser = localStorage.getItem("username");
+    if(!loggedInUser){ alert('Please login'); window.location.href='login.html'; }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const queriedUser = urlParams.get("user");
+    const isAdmin = localStorage.getItem("role") === "admin";
+    const username = (isAdmin && queriedUser) ? queriedUser : loggedInUser;
 
     // ══ NAV hydration ══
-    const navInitials = (username||"").split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)||"?";
+    const navInitials = (loggedInUser||"").split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2)||"?";
     document.getElementById("nav-avatar-top").textContent   = navInitials;
-    document.getElementById("nav-user-name-top").textContent = username;
+    document.getElementById("nav-user-name-top").textContent = loggedInUser;
+    if (isAdmin) {
+      const adminEl = document.getElementById("navAdminLink");
+      if (adminEl) adminEl.style.display = "inline-block";
+      
+      if (queriedUser && queriedUser !== loggedInUser) {
+        const eyebrow = document.getElementById("profileHeroEyebrow");
+        if (eyebrow) {
+          eyebrow.innerHTML = `<i class="fa-solid fa-shield-halved fa-xs" style="color:#FFF;"></i> Administrative Workspace (Viewing Mode)`;
+        }
+      }
+    }
 
     // ══ CURSOR ══
     const dot  = document.getElementById('cursor-dot');
@@ -869,7 +982,102 @@
       });
     }
 
-    // ══ LOAD PROFILE ══
+    // ══ DRIVER VERIFICATION UI HELPER ══
+    // Updates the driver identity row + CTA button based on isVerifiedDriver + verificationStatus
+    function updateDriverVerifUI(isVerifiedDriver, verificationStatus) {
+      const dv  = document.getElementById("driverVerifStatus");
+      const sub = document.getElementById("driverVerifSub");
+      const btn = document.getElementById("driverVerifBtn");
+      const remarksRow  = document.getElementById("driverRemarksRow");
+      const remarksText = document.getElementById("driverRemarksText");
+
+      if (isVerifiedDriver || verificationStatus === "Approved") {
+        dv.className  = "vstatus vs-verified";
+        dv.textContent = "Verified ✓";
+        if (sub) sub.textContent = "Documents verified by admin";
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Driver Verified';
+          btn.style.background = "linear-gradient(135deg,#059669,#10B981)";
+          btn.style.pointerEvents = "none";
+          btn.style.opacity = "0.82";
+        }
+        if (remarksRow) remarksRow.style.display = "none";
+      } else if (verificationStatus === "Pending") {
+        dv.className  = "vstatus vs-pending";
+        dv.textContent = "Under Review";
+        if (sub) sub.textContent = "Awaiting admin review (24–48 hrs)";
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-clock"></i> Verification Pending';
+          btn.style.background = "linear-gradient(135deg,#D97706,#F59E0B)";
+          btn.style.pointerEvents = "none";
+          btn.style.opacity = "0.82";
+        }
+        if (remarksRow) remarksRow.style.display = "none";
+      } else if (verificationStatus === "Rejected") {
+        dv.className  = "vstatus vs-unverified";
+        dv.textContent = "Rejected";
+        if (sub) sub.textContent = "Resubmit corrected documents";
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Resubmit Verification';
+          btn.style.background = "linear-gradient(135deg,#E11D48,#FB7185)";
+          btn.style.pointerEvents = "";
+          btn.style.opacity = "";
+        }
+        // Show admin remarks if available (fetched separately)
+        fetchAndShowRemarks();
+        if (remarksRow) remarksRow.style.display = "block";
+      } else {
+        // Not started
+        dv.className  = "vstatus vs-unverified";
+        dv.textContent = "Not Started";
+        if (sub) sub.textContent = "Government ID & Selfie";
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-id-badge"></i> Start Driver Verification';
+          btn.style.background = "";
+          btn.style.pointerEvents = "";
+          btn.style.opacity = "";
+        }
+        if (remarksRow) remarksRow.style.display = "none";
+      }
+    }
+
+    async function fetchAndShowRemarks() {
+      try {
+        const res = await fetch(`/api/driver-verification/status/${encodeURIComponent(username)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const remarksRow  = document.getElementById("driverRemarksRow");
+        const remarksText = document.getElementById("driverRemarksText");
+        if (data.adminRemarks && remarksRow && remarksText) {
+          remarksText.textContent = data.adminRemarks;
+          remarksRow.style.display = "block";
+        }
+      } catch (e) { console.warn("Could not fetch driver remarks:", e); }
+    }
+
+    // ══ VEHICLE STATUS ══
+    async function loadVehicleStatus() {
+      const vv = document.getElementById("vehicleVerifStatus");
+      if (!vv) return;
+      try {
+        const res  = await fetch(`/api/vehicles/${encodeURIComponent(username)}`);
+        const data = await res.json();
+        // API returns array of vehicles or object with vehicles array
+        const vehicles = Array.isArray(data) ? data : (data.vehicles || []);
+        if (vehicles.length > 0) {
+          vv.className  = "vstatus vs-verified";
+          vv.textContent = "Added";
+        } else {
+          vv.className  = "vstatus vs-unverified";
+          vv.textContent = "Not Added";
+        }
+      } catch (e) {
+        vv.className  = "vstatus vs-unverified";
+        vv.textContent = "Not Added";
+      }
+    }
+
+
     async function loadProfile(){
       try{
         const response = await fetch(`/api/profile/${username}`);
@@ -885,12 +1093,12 @@
 
         const verifBadge = document.getElementById("heroVerifBadge");
         if(verifBadge){
-          if(user.isPhoneVerified){
+          if(user.phoneNumber){
             verifBadge.className = "hbadge green";
-            verifBadge.innerHTML = `<i class="fa-solid fa-check-circle"></i> Phone Verified`;
+            verifBadge.innerHTML = `<i class="fa-solid fa-check-circle"></i> Phone Added`;
           } else {
             verifBadge.className = "hbadge";
-            verifBadge.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Phone Unverified`;
+            verifBadge.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> No Phone`;
           }
         }
 
@@ -898,7 +1106,8 @@
         // Profile photo
         if(user.profilePhoto){
           const img = document.getElementById("profileImage");
-          img.src = user.profilePhoto;
+          const isLegacy = user.profilePhoto.startsWith("/uploads/");
+          img.src = isLegacy ? 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234338CA"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>' : user.profilePhoto;
           img.style.display = "block";
           document.getElementById("profileAvatarInitial").style.display = "none";
         }
@@ -912,28 +1121,24 @@
         document.getElementById("role").textContent         = user.role         || "—";
         document.getElementById("reportCount").textContent  = user.reportCount  ?? 0;
 
-        // Verification statuses
+        // ── Email verification status ──
         const ev = document.getElementById("emailVerifStatus");
+        if(user.isEmailVerified){ ev.className="vstatus vs-verified"; ev.textContent="Verified"; }
+        else { ev.className="vstatus vs-unverified"; ev.textContent="Unverified"; }
+
+        // ── Phone status ──
         const pv = document.getElementById("phoneVerifStatus");
-        const dv = document.getElementById("driverVerifStatus");
-        const vv = document.getElementById("vehicleVerifStatus");
-
-        if(user.email){ ev.className="vstatus vs-verified"; ev.textContent="Verified"; }
-        else           { ev.className="vstatus vs-unverified"; ev.textContent="No Email"; }
-
-        // Added conditional safecheck for pv context since node elements are removed
         if(pv){
-          if(user.isPhoneVerified){ pv.className="vstatus vs-verified"; pv.textContent="Verified"; }
-          else if(user.phoneNumber){ pv.className="vstatus vs-pending"; pv.textContent="Not Verified"; }
+          if(user.phoneNumber){ pv.className="vstatus vs-verified"; pv.textContent="Added"; }
           else { pv.className="vstatus vs-unverified"; pv.textContent="Not Added"; }
         }
 
-        if(user.driverVerified){ dv.className="vstatus vs-verified"; dv.textContent="Verified"; }
-        else if(user.driverVerificationPending){ dv.className="vstatus vs-pending"; dv.textContent="Pending"; }
-        else { dv.className="vstatus vs-unverified"; dv.textContent="Not Started"; }
+        // ── Driver identity status (use real User model fields) ──
+        // isVerifiedDriver + verificationStatus from the User model
+        updateDriverVerifUI(user.isVerifiedDriver, user.verificationStatus);
 
-        if(user.vehicleVerified){ vv.className="vstatus vs-verified"; vv.textContent="Verified"; }
-        else { vv.className="vstatus vs-unverified"; vv.textContent="Not Started"; }
+        // ── Vehicle status (check if vehicle record exists) ──
+        loadVehicleStatus();
 
         renderBadges(user);
 
@@ -1036,9 +1241,159 @@
       loadProfile();
     }
 
-    function goHome(){ window.location.href='index.html'; }
+     function goHome(){ window.location.href='index.html'; }
 
-    loadProfile();
+     // ══ SHOW/HIDE PASSWORD TOGGLE ══
+     function togglePasswordVisibility(inputId, iconEl) {
+       const input = document.getElementById(inputId);
+       if (!input) return;
+       if (input.type === "password") {
+         input.type = "text";
+         iconEl.classList.replace("fa-eye", "fa-eye-slash");
+       } else {
+         input.type = "password";
+         iconEl.classList.replace("fa-eye-slash", "fa-eye");
+       }
+     }
+
+     // ══ DRAG & DROP PHOTO UPLOAD HIGHLIGHTS ══
+     const dropZone = document.getElementById('photoDropZone');
+     const photoInput = document.getElementById('photoInput');
+     if (dropZone && photoInput) {
+       ['dragenter', 'dragover'].forEach(eventName => {
+         dropZone.addEventListener(eventName, (e) => {
+           e.preventDefault();
+           dropZone.style.borderColor = 'var(--primary-light)';
+           dropZone.style.background = 'var(--primary-dim)';
+         }, false);
+       });
+
+       ['dragleave', 'drop'].forEach(eventName => {
+         dropZone.addEventListener(eventName, (e) => {
+           e.preventDefault();
+           dropZone.style.borderColor = '';
+           dropZone.style.background = '';
+         }, false);
+       });
+
+       dropZone.addEventListener('drop', (e) => {
+         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+           photoInput.files = e.dataTransfer.files;
+           previewPhoto({ target: photoInput });
+         }
+       }, false);
+     }
+
+    // ══ PHONE NUMBER MODAL LOGIC ══
+    function openPhoneModal() {
+      const modal = document.getElementById("phoneModal");
+      const input = document.getElementById("newPhoneInput");
+      const currentPhone = document.getElementById("phone").textContent;
+      
+      if (currentPhone && currentPhone !== "Not Added" && currentPhone !== "—") {
+        input.value = currentPhone.replace(/^\+91/, "").trim();
+      } else {
+        input.value = "";
+      }
+      
+      document.getElementById("phoneModalMsg").style.display = "none";
+      modal.style.display = "flex";
+      setTimeout(() => {
+        modal.style.opacity = "1";
+        modal.querySelector(".modal-content").style.transform = "scale(1)";
+      }, 50);
+    }
+
+    function closePhoneModal() {
+      const modal = document.getElementById("phoneModal");
+      modal.style.opacity = "0";
+      modal.querySelector(".modal-content").style.transform = "scale(0.95)";
+      setTimeout(() => {
+        modal.style.display = "none";
+      }, 300);
+    }
+
+    async function savePhoneNumber() {
+      const input = document.getElementById("newPhoneInput");
+      const saveBtn = document.getElementById("savePhoneBtn");
+      const msgEl = document.getElementById("phoneModalMsg");
+      const raw = input.value.trim();
+
+      const digits = raw.replace(/\D/g, "");
+      if (digits.length !== 10) {
+        msgEl.style.display = "block";
+        msgEl.style.color = "var(--rose)";
+        msgEl.textContent = "Please enter a valid 10-digit number.";
+        return;
+      }
+
+      const formattedPhone = "+91" + digits;
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+        msgEl.style.display = "none";
+
+        const response = await fetch("/api/profile/update-phone", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username: username,
+            phoneNumber: formattedPhone
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          msgEl.style.display = "block";
+          msgEl.style.color = "var(--green)";
+          msgEl.textContent = "✓ Phone number updated successfully!";
+          
+          document.getElementById("phone").textContent = formattedPhone;
+          localStorage.setItem("phoneNumber", formattedPhone);
+
+          if (data.trustScore != null) {
+            document.getElementById("heroTrustScore").textContent = data.trustScore;
+            document.getElementById("trust").textContent = data.trustScore;
+          }
+
+          const pv = document.getElementById("phoneVerifStatus");
+          if (pv) {
+            pv.className = "vstatus vs-verified";
+            pv.textContent = "Added";
+          }
+          
+          const verifBadge = document.getElementById("heroVerifBadge");
+          if (verifBadge) {
+            verifBadge.className = "hbadge green";
+            verifBadge.innerHTML = `<i class="fa-solid fa-check-circle"></i> Phone Added`;
+          }
+
+          loadProfileCompletion();
+
+          setTimeout(() => {
+            closePhoneModal();
+          }, 1500);
+        } else {
+          msgEl.style.display = "block";
+          msgEl.style.color = "var(--rose)";
+          msgEl.textContent = data.message || "Failed to update phone number.";
+        }
+      } catch (err) {
+        console.error(err);
+        msgEl.style.display = "block";
+        msgEl.style.color = "var(--rose)";
+        msgEl.textContent = "An error occurred. Please try again.";
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = "Save Changes";
+      }
+    }
+
+      loadProfile();
   </script>
 
   <script>

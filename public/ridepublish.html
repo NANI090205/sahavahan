@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.alert = function(msg) { console.log("ALERT:", msg); };
+    window.confirm = function(msg) { console.log("CONFIRM:", msg); return true; };
+  </script>
   <meta charset="UTF-8">
   <title>Publish Ride — SahaVahan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -518,6 +522,130 @@
 
     /* Leaflet popup z-index fix */
     .leaflet-popup { z-index: 400 !important; }
+
+    /* ══ UBER/RAPIDO SPLIT LAYOUT ══ */
+    .split-container {
+      display: flex;
+      min-height: calc(100vh - 76px);
+      margin-top: 76px;
+      position: relative;
+    }
+    .form-sidebar {
+      width: 460px;
+      min-width: 400px;
+      padding: 32px 24px 80px;
+      height: calc(100vh - 76px);
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      background: var(--bg-surface);
+      position: relative;
+      z-index: 10;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+    }
+    .map-pane {
+      flex: 1;
+      height: calc(100vh - 76px);
+      position: sticky;
+      top: 76px;
+      z-index: 5;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Floating map overlay card */
+    .map-overlay-card {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 22px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      width: max-content;
+      max-width: 90%;
+    }
+    .map-overlay-card.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Pulsing Markers styling */
+    .custom-pin-pickup {
+      width: 20px; height: 20px;
+      background: var(--green);
+      border: 3.5px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.3), var(--shadow-md);
+      animation: pinPulse 2s infinite;
+    }
+    .custom-pin-destination {
+      width: 20px; height: 20px;
+      background: var(--rose);
+      border: 3.5px solid #ffffff;
+      border-radius: 4px;
+      box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.3), var(--shadow-md);
+      animation: destPulse 2s infinite;
+    }
+    @keyframes pinPulse {
+      0% { box-shadow: 0 0 0 0px rgba(5, 150, 105, 0.5), var(--shadow-sm); }
+      70% { box-shadow: 0 0 0 12px rgba(5, 150, 105, 0), var(--shadow-md); }
+      100% { box-shadow: 0 0 0 0px rgba(5, 150, 105, 0), var(--shadow-sm); }
+    }
+    @keyframes destPulse {
+      0% { box-shadow: 0 0 0 0px rgba(225, 29, 72, 0.5), var(--shadow-sm); }
+      70% { box-shadow: 0 0 0 12px rgba(225, 29, 72, 0), var(--shadow-md); }
+      100% { box-shadow: 0 0 0 0px rgba(225, 29, 72, 0), var(--shadow-sm); }
+    }
+
+    /* Confine scroll to sidebar on desktop */
+    @media (min-width: 901px) {
+      body {
+        overflow: hidden;
+      }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .split-container {
+        flex-direction: column-reverse;
+        margin-top: 64px;
+        min-height: calc(100vh - 64px);
+      }
+      .form-sidebar {
+        width: 100%;
+        max-width: 100%;
+        min-width: 100%;
+        height: auto;
+        overflow-y: visible;
+        border-right: none;
+        padding: 24px 16px 80px;
+      }
+      .map-pane {
+        width: 100%;
+        height: 340px;
+        position: relative;
+        top: 0;
+      }
+      .map-overlay-card {
+        bottom: 16px;
+        padding: 12px 18px;
+        gap: 16px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -542,6 +670,8 @@
       <li><a href="rides.html"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
       <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
       <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+      <li><a href="profile.html"><i class="fa-solid fa-user-gear" style="font-size:11px;margin-right:5px;"></i>Profile</a></li>
+      <li><a href="admin.html" id="navAdminLink" style="display:none;"><i class="fa-solid fa-shield-halved" style="font-size:11px;margin-right:5px;"></i>Admin Panel</a></li>
     </ul>
     <div class="nav-right">
       <div class="nav-user-pill">
@@ -553,79 +683,57 @@
   </nav>
 
   <!-- PAGE CONTENT -->
-  <div class="page-wrapper">
-
-    <!-- PAGE HEADER -->
-    <div class="page-header">
-      <div class="page-eyebrow"><i class="fa-solid fa-paper-plane fa-xs"></i> Driver Mode</div>
-      <h1 class="page-title">Publish a <span>Ride</span></h1>
-      <p class="page-subtitle">Share your route, set your fare, and connect with verified co-passengers heading your way.</p>
-    </div>
-
-    <form id="publishForm">
-
-      <!-- ══ CARD 1: MAP ══ -->
-      <div class="map-card">
-        <div class="map-header">
-          <div class="map-header-left">
-            <div class="card-icon ci-teal"><i class="fa-solid fa-map-location-dot"></i></div>
-            <div class="card-title-wrap">
-              <div class="card-title">Route Preview</div>
-              <div class="card-subtitle">Pick source and destination to visualise your route</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.2);border-radius:100px;padding:5px 12px;">
-            <div style="width:7px;height:7px;border-radius:50%;background:var(--green-light);animation:pulseDot 1.8s infinite;"></div>
-            <span style="font-size:11px;font-weight:700;color:#047857;">LIVE MAP</span>
-          </div>
-        </div>
-        <div class="map-body">
-          <div id="map"></div>
-        </div>
-        <div class="map-hint">
-          <i class="fa-solid fa-circle-info" style="color:var(--primary);font-size:11px;"></i>
-          Click on the map for a quick pin, or use the search boxes below for precise locations.
-        </div>
+  <div class="split-container">
+    <div class="form-sidebar">
+      
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="page-eyebrow"><i class="fa-solid fa-paper-plane fa-xs"></i> Driver Mode</div>
+        <h1 class="page-title">Publish a <span>Ride</span></h1>
+        <p class="page-subtitle">Share your route, set your fare, and connect with verified co-passengers.</p>
       </div>
 
-      <!-- ══ CARD 2: LOCATION ══ -->
-      <div class="form-card">
-        <div class="card-header">
-          <div class="card-icon ci-blue"><i class="fa-solid fa-route"></i></div>
-          <div class="card-title-wrap">
-            <div class="card-title">Pickup & Destination</div>
-            <div class="card-subtitle">Search and confirm both endpoints of your route</div>
-          </div>
-        </div>
+      <form id="publishForm">
 
-        <div class="field-grid" style="margin-bottom:16px;">
-          <div class="field-group">
-            <label class="field-label"><i class="fa-solid fa-location-dot"></i> Pickup Location</label>
-            <div class="suggestions-wrap">
-              <div style="position:relative;">
-                <input id="pickupSearch" type="text" placeholder="Search pickup city or area…" autocomplete="off" required />
-              </div>
-              <div id="pickupSuggestions" class="suggestions-dropdown"></div>
+        <!-- ══ CARD 1: LOCATION ══ -->
+        <div class="form-card">
+          <div class="card-header">
+            <div class="card-icon ci-blue"><i class="fa-solid fa-route"></i></div>
+            <div class="card-title-wrap">
+              <div class="card-title">Pickup & Destination</div>
+              <div class="card-subtitle">Search and confirm both endpoints of your route</div>
             </div>
           </div>
-          <div class="field-group">
-            <label class="field-label"><i class="fa-solid fa-flag-checkered"></i> Destination</label>
-            <div class="suggestions-wrap">
-              <div style="position:relative;">
-                <input id="destinationSearch" type="text" placeholder="Search destination city or area…" autocomplete="off" required />
+
+          <div class="field-grid" style="margin-bottom:16px;">
+            <div class="field-group">
+              <label class="field-label"><i class="fa-solid fa-location-dot"></i> Pickup Location</label>
+              <div class="suggestions-wrap">
+                <div style="position:relative;">
+                  <input id="pickupSearch" type="text" placeholder="Search pickup city or area…" autocomplete="off" required />
+                </div>
+                <div id="pickupSuggestions" class="suggestions-dropdown"></div>
               </div>
-              <div id="destinationResults" class="suggestions-dropdown"></div>
+            </div>
+            <div class="field-group">
+              <label class="field-label"><i class="fa-solid fa-flag-checkered"></i> Destination</label>
+              <div class="suggestions-wrap">
+                <div style="position:relative;">
+                  <input id="destinationSearch" type="text" placeholder="Search destination city or area…" autocomplete="off" required />
+                </div>
+                <div id="destinationResults" class="suggestions-dropdown"></div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Hidden coordinate fields (keep for JS) -->
-        <input type="hidden" id="pickupSelectedName" />
-        <input type="hidden" id="destinationSelectedName" />
-        <input type="hidden" id="pickupLat" />
-        <input type="hidden" id="pickupLng" />
-        <input type="hidden" id="destinationLat" />
-        <input type="hidden" id="destinationLng" />
+          <!-- Hidden coordinate fields (keep for JS) -->
+          <input type="hidden" id="pickupSelectedName" />
+          <input type="hidden" id="destinationSelectedName" />
+          <input type="hidden" id="pickupLat" />
+          <input type="hidden" id="pickupLng" />
+          <input type="hidden" id="destinationLat" />
+          <input type="hidden" id="destinationLng" />
+        </div>
 
         <!-- Route meta strip -->
         <div class="route-meta-strip" id="routeMetaStrip">
@@ -653,7 +761,6 @@
             </div>
           </div>
         </div>
-      </div>
 
       <!-- ══ CARD 3: INTERMEDIATE STOPS ══ -->
       <div class="form-card">
@@ -813,60 +920,64 @@
       </div>
 
     </form><!-- /publishForm -->
-  </div><!-- /page-wrapper -->
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-top">
-        <div>
-          <div class="footer-logo">Saha<span>Vahan</span></div>
-          <p class="footer-desc">Smart carpooling for Andhra Pradesh and beyond. Move together, save more.</p>
+    <!-- FOOTER -->
+    <footer style="margin-top: 50px; padding: 32px 0 20px; background: transparent; border-top: 1px solid var(--border);">
+      <div class="footer-inner" style="padding: 0;">
+        <div class="footer-top" style="grid-template-columns: 1fr; gap: 20px;">
+          <div>
+            <div class="footer-logo">Saha<span>Vahan</span></div>
+            <p class="footer-desc" style="max-width:100%;">Smart carpooling. Move together, save more.</p>
+          </div>
         </div>
-        <div>
-          <div class="footer-col-title">Platform</div>
-          <ul class="footer-links">
-            <li><a href="rides.html">Find a Ride</a></li>
-            <li><a href="ridepublish.html">Publish a Ride</a></li>
-            <li><a href="dashboard.html">Dashboard</a></li>
-            <li><a href="leaderboard.html">Leaderboard</a></li>
-          </ul>
-        </div>
-        <div>
-          <div class="footer-col-title">Company</div>
-          <ul class="footer-links">
-            <li><a href="contact.html">Contact Us</a></li>
-            <li><a href="services.html">Services</a></li>
-            <li><a href="aboutus.html">About Us</a></li>
-          </ul>
-        </div>
-        <div>
-          <div class="footer-col-title">Legal</div>
-          <ul class="footer-links">
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms of Service</a></li>
-            <li><a href="#">Safety Guide</a></li>
-          </ul>
+        <div class="footer-bottom" style="padding-top: 12px; margin-top: 12px;">
+          <span>© 2026 SahaVahan.</span>
         </div>
       </div>
-      <div class="footer-bottom">
-        <span>© 2026 SahaVahan. All rights reserved.</span>
-        <div style="display:flex;gap:16px;font-size:16px;">
-          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-x-twitter"></i></a>
-          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-instagram"></i></a>
-          <a href="#" style="color:var(--text-muted);transition:color .2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'"><i class="fa-brands fa-linkedin"></i></a>
-        </div>
+    </footer>
+
+    <div class="dev-credit" style="background: transparent; border-top: none; padding: 12px 0 0;">
+      <div class="dev-credit-inner" style="font-size: 11px;">
+        <i class="fa-solid fa-code" style="color:var(--primary);font-size:11px;"></i>
+        Developed <span class="dev-heart">♥</span> by
+        <span class="dev-name">Venkata Jagapathi Babu K</span>
       </div>
     </div>
-  </footer>
 
-  <div class="dev-credit">
-    <div class="dev-credit-inner">
-      <i class="fa-solid fa-code" style="color:var(--primary);font-size:13px;"></i>
-      Developed <span class="dev-heart">♥</span> by
-      <span class="dev-name">Venkata Jagapathi Babu K</span>
-    </div>
-  </div>
+    </div> <!-- /form-sidebar -->
+
+    <div class="map-pane">
+      <div id="map"></div>
+      
+      <!-- Route Meta Overlay Card -->
+      <div class="map-overlay-card" id="routeMetaOverlay">
+        <div class="rms-item">
+          <div class="rms-icon rmi-blue"><i class="fa-solid fa-road fa-xs"></i></div>
+          <div>
+            <div class="rms-label">Distance</div>
+            <div class="rms-value" id="routeDistanceValOverlay">—</div>
+          </div>
+        </div>
+        <div class="rms-divider"></div>
+        <div class="rms-item">
+          <div class="rms-icon rmi-teal"><i class="fa-solid fa-clock fa-xs"></i></div>
+          <div>
+            <div class="rms-label">ETA</div>
+            <div class="rms-value" id="routeEtaValOverlay">—</div>
+          </div>
+        </div>
+        <div class="rms-divider"></div>
+        <div class="rms-item">
+          <div class="rms-icon rmi-green"><i class="fa-solid fa-leaf fa-xs"></i></div>
+          <div>
+            <div class="rms-label">Est. CO₂ saved</div>
+            <div class="rms-value" id="routeCO2ValOverlay">—</div>
+          </div>
+        </div>
+      </div>
+    </div> <!-- /map-pane -->
+
+  </div> <!-- /split-container -->
 
   <button id="installBtn" onclick="tryInstall()">📱 Install App</button>
 
@@ -941,31 +1052,92 @@
     const initials = (username || "RK").split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
     document.getElementById("nav-avatar").textContent = initials;
     document.getElementById("nav-user-name").textContent = username;
+    if (localStorage.getItem("role") === "admin") {
+      const adminEl = document.getElementById("navAdminLink");
+      if (adminEl) adminEl.style.display = "inline-block";
+    }
 
     function logout() { localStorage.clear(); window.location.href = "login.html"; }
+
+    // Vars for stops
+    let stopMarkers = [];
+
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+      };
+    }
+
+    const searchLocation = async (query, callback) => {
+      const items = await geocodeSearch(query);
+      callback(items);
+    };
+
+    const debouncedSearchLocation = debounce(searchLocation, 500);
 
     // ══ STOPS ══
     function addStop() {
       const container = document.getElementById('stopsContainer');
       if (!container) return;
+      
       const div = document.createElement('div');
-      div.className = 'stop-item';
+      div.className = 'stop-item suggestions-wrap';
+      div.style.flexDirection = 'column';
+      div.style.alignItems = 'stretch';
+      div.style.gap = '0';
+      div.style.padding = '0';
+      
       div.innerHTML = `
-        <i class="fa-solid fa-map-pin" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
-        <input class="stopInput" placeholder="Stop name or location…" />
-        <button type="button" class="btn-remove-stop" onclick="this.closest('.stop-item').remove()">
-          <i class="fa-solid fa-xmark"></i>
-        </button>`;
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; width:100%;">
+          <i class="fa-solid fa-map-pin" style="color:var(--primary);font-size:12px;flex-shrink:0;"></i>
+          <input class="stopInput" placeholder="Stop name or location…" autocomplete="off" style="width:100%; border:none; background:transparent; outline:none;" />
+          <button type="button" class="btn-remove-stop" style="background:rgba(225,29,72,0.08); border:none; color:var(--rose); width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:none; flex-shrink:0;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="suggestions-dropdown stop-suggestions" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:500; background:var(--bg-surface); border:1.5px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-md); max-height:180px; overflow-y:auto;"></div>
+      `;
+      
       container.appendChild(div);
-      // add cursor listeners to new elements
+
+      const inp = div.querySelector('.stopInput');
+      const suggestionsEl = div.querySelector('.stop-suggestions');
+      const removeBtn = div.querySelector('.btn-remove-stop');
+
+      // Add cursor listeners
       div.addEventListener('mouseenter', () => document.body.classList.add('c-card'));
       div.addEventListener('mouseleave', () => document.body.classList.remove('c-card'));
-      const inp = div.querySelector('input');
       inp.addEventListener('mouseenter', () => document.body.classList.add('c-text'));
       inp.addEventListener('mouseleave', () => document.body.classList.remove('c-text'));
-      const btn = div.querySelector('button');
-      btn.addEventListener('mouseenter', () => document.body.classList.add('c-btn'));
-      btn.addEventListener('mouseleave', () => document.body.classList.remove('c-btn'));
+      removeBtn.addEventListener('mouseenter', () => document.body.classList.add('c-btn'));
+      removeBtn.addEventListener('mouseleave', () => document.body.classList.remove('c-btn'));
+
+      // Autocomplete logic
+      inp.addEventListener('input', () => {
+        const q = (inp.value || '').trim();
+        inp.removeAttribute('data-lat');
+        inp.removeAttribute('data-lng');
+        if (!q || q.length < 3) { suggestionsEl.style.display = 'none'; return; }
+        debouncedSearchLocation(q, items => {
+          showSuggestions(suggestionsEl, items, item => {
+            const { lat, lng } = parseLatLngFromPlace(item);
+            const name = item.display_name || 'Stop';
+            inp.value = name;
+            inp.setAttribute('data-lat', lat);
+            inp.setAttribute('data-lng', lng);
+            suggestionsEl.style.display = 'none';
+            updateRoute();
+          });
+        });
+      });
+
+      removeBtn.addEventListener('click', () => {
+        div.remove();
+        updateRoute();
+      });
     }
 
     // ══ SMART PRICING ══
@@ -1009,9 +1181,9 @@
 
     // ══ MAP ══
     const map = L.map("map").setView([16.5062, 80.6480], 8);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors"
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
     setTimeout(() => { map.invalidateSize(); }, 800);
 
@@ -1022,6 +1194,7 @@
     let distanceKm = null;
     let etaMinutes = null;
     let routeLine = null;
+    let routeLineBg = null;
 
     const pickupSearchEl       = document.getElementById('pickupSearch');
     const destinationSearchEl  = document.getElementById('destinationSearch');
@@ -1040,18 +1213,29 @@
       const cEl = document.getElementById('routeCO2Val');
       if (dEl) dEl.textContent = distanceText;
       if (eEl) eEl.textContent = etaText;
-      if (cEl && distanceKm != null) {
-        const co2Saved = (distanceKm * 0.09).toFixed(2);
-        cEl.textContent = `${co2Saved} kg`;
+      
+      const co2Val = distanceKm != null ? (distanceKm * 0.09).toFixed(2) : null;
+      if (cEl && co2Val != null) {
+        cEl.textContent = `${co2Val} kg`;
+      }
+
+      // Update overlay elements
+      const dOverlay = document.getElementById('routeDistanceValOverlay');
+      const eOverlay = document.getElementById('routeEtaValOverlay');
+      const cOverlay = document.getElementById('routeCO2ValOverlay');
+      if (dOverlay) dOverlay.textContent = distanceText;
+      if (eOverlay) eOverlay.textContent = etaText;
+      if (cOverlay && co2Val != null) {
+        cOverlay.textContent = `${cOverlay.id ? co2Val : '—'} kg`;
       }
     }
 
     function setPickupMarker(lat, lng, title) {
       if (sourceMarker) map.removeLayer(sourceMarker);
       const icon = L.divIcon({
-        className: '',
-        html: `<div style="background:var(--primary);width:12px;height:12px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(67,56,202,0.5);"></div>`,
-        iconSize: [12, 12], iconAnchor: [6, 6]
+        className: 'custom-pin-pickup',
+        html: '',
+        iconSize: [20, 20], iconAnchor: [10, 10]
       });
       sourceMarker = L.marker([lat, lng], {icon}).addTo(map).bindPopup(`<b>📍 Pickup</b><br>${title}`).openPopup();
     }
@@ -1059,22 +1243,36 @@
     function setDestinationMarker(lat, lng, title) {
       if (destinationMarker) map.removeLayer(destinationMarker);
       const icon = L.divIcon({
-        className: '',
-        html: `<div style="background:var(--accent);width:12px;height:12px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(14,165,233,0.5);"></div>`,
-        iconSize: [12, 12], iconAnchor: [6, 6]
+        className: 'custom-pin-destination',
+        html: '',
+        iconSize: [20, 20], iconAnchor: [10, 10]
       });
       destinationMarker = L.marker([lat, lng], {icon}).addTo(map).bindPopup(`<b>🏁 Destination</b><br>${title}`).openPopup();
     }
 
     function drawRouteFromOSRM(data) {
       if (routeLine) { try { map.removeLayer(routeLine); } catch(e) {} routeLine = null; }
-      if (!data || !data.routes || !data.routes[0]) return;
+      if (routeLineBg) { try { map.removeLayer(routeLineBg); } catch(e) {} routeLineBg = null; }
+      if (!data || !data.routes || !data.routes[0]) {
+        const overlay = document.getElementById('routeMetaOverlay');
+        if (overlay) overlay.classList.remove('visible');
+        return;
+      }
       const route = data.routes[0];
       const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-      routeLine = L.polyline(coords, {
-        color: '#4338CA', weight: 4, opacity: 0.7,
-        dashArray: null
+
+      // Draw background glow layer
+      routeLineBg = L.polyline(coords, {
+        color: '#4338CA', weight: 8, opacity: 0.2,
+        lineCap: 'round', lineJoin: 'round'
       }).addTo(map);
+
+      // Draw foreground core layer
+      routeLine = L.polyline(coords, {
+        color: '#4338CA', weight: 5, opacity: 0.95,
+        lineCap: 'round', lineJoin: 'round'
+      }).addTo(map);
+
       map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
       distanceKm = route.distance ? (route.distance / 1000) : null;
       const durSec = route.duration || null;
@@ -1082,6 +1280,10 @@
       const distanceText = distanceKm != null ? `${distanceKm.toFixed(1)} km` : '—';
       const etaText = etaMinutes != null ? `${etaMinutes} min` : '—';
       setRouteMeta(distanceText, etaText);
+
+      const overlay = document.getElementById('routeMetaOverlay');
+      if (overlay) overlay.classList.add('visible');
+
       // Auto-fill price suggestion
       if (distanceKm != null) {
         const sugEl = document.getElementById('priceSuggestion');
@@ -1094,7 +1296,42 @@
       const pLat = Number(pickupLatEl.value), pLng = Number(pickupLngEl.value);
       const dLat = Number(destinationLatEl.value), dLng = Number(destinationLngEl.value);
       if (!Number.isFinite(pLat) || !Number.isFinite(pLng) || !Number.isFinite(dLat) || !Number.isFinite(dLng)) return;
-      const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+
+      // Gather waypoints starting from pickup
+      const waypoints = [];
+      waypoints.push({ lat: pLat, lng: pLng });
+
+      // Gather coordinates from intermediate stops
+      const stopInputs = document.querySelectorAll('.stopInput');
+      
+      // Clear old stop markers from the map first
+      stopMarkers.forEach(m => map.removeLayer(m));
+      stopMarkers = [];
+
+      stopInputs.forEach((input, index) => {
+        const sLat = parseFloat(input.getAttribute('data-lat'));
+        const sLng = parseFloat(input.getAttribute('data-lng'));
+        if (Number.isFinite(sLat) && Number.isFinite(sLng)) {
+          waypoints.push({ lat: sLat, lng: sLng });
+
+          // Render a minor intermediate stop pin on the map
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="background:var(--accent);width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [10, 10], iconAnchor: [5, 5]
+          });
+          const m = L.marker([sLat, sLng], {icon}).addTo(map).bindPopup(`<b>Stop ${index + 1}</b><br>${input.value}`);
+          stopMarkers.push(m);
+        }
+      });
+
+      // Finish at destination
+      waypoints.push({ lat: dLat, lng: dLng });
+
+      // Build coords parameter string for OSRM: lng1,lat1;lng2,lat2;...
+      const coordsString = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
       try {
         const res = await fetch(url);
         if (!res.ok) return;
@@ -1158,32 +1395,33 @@
     }
 
     function setupAutocomplete() {
-      let pickupTimer = null, dropTimer = null;
       pickupSearchEl.addEventListener('input', async () => {
         const q = (pickupSearchEl.value || '').trim();
         pickupSelectedNameEl.value = ''; pickupLatEl.value = ''; pickupLngEl.value = '';
         if (!q || q.length < 3) { pickupSuggestionsEl.style.display = 'none'; return; }
-        clearTimeout(pickupTimer);
-        pickupTimer = setTimeout(async () => {
-          const items = await geocodeSearch(q);
+        debouncedSearchLocation(q, items => {
           showSuggestions(pickupSuggestionsEl, items, item => handlePickupPick(item));
-        }, 260);
+        });
       });
       destinationSearchEl.addEventListener('input', async () => {
         const q = (destinationSearchEl.value || '').trim();
         destinationSelectedNameEl.value = ''; destinationLatEl.value = ''; destinationLngEl.value = '';
         if (!q || q.length < 3) { destinationResultsEl.style.display = 'none'; return; }
-        clearTimeout(dropTimer);
-        dropTimer = setTimeout(async () => {
-          const items = await geocodeSearch(q);
+        debouncedSearchLocation(q, items => {
           showSuggestions(destinationResultsEl, items, item => handleDestinationPick(item));
-        }, 260);
+        });
       });
       document.addEventListener('click', ev => {
         const t = ev.target;
         if (t !== pickupSearchEl && t !== destinationSearchEl && !pickupSuggestionsEl.contains(t) && !destinationResultsEl.contains(t)) {
           hideSuggestions();
         }
+        // Hide stop suggestions when clicking outside
+        document.querySelectorAll('.stop-suggestions').forEach(el => {
+          if (!el.contains(t) && t !== el.previousElementSibling?.querySelector('.stopInput')) {
+            el.style.display = 'none';
+          }
+        });
       });
       hideSuggestions();
     }

@@ -3,275 +3,913 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Ride Tracking</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <title>Live Ride Tracking — SahaVahan</title>
+  <meta name="description" content="Track your SahaVahan ride in real-time. See live driver location, boarding and drop OTP verification, and navigation."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:       #4338CA;
+      --primary-light: #6366F1;
+      --primary-glow:  rgba(99,102,241,0.35);
+      --green:         #059669;
+      --green-light:   #10B981;
+      --amber:         #D97706;
+      --rose:          #E11D48;
+      --rose-dim:      rgba(225,29,72,0.12);
+      --bg:            #0D1117;
+      --bg-surface:    #161B22;
+      --bg-card:       #1C2333;
+      --border:        rgba(255,255,255,0.08);
+      --border-hover:  rgba(255,255,255,0.15);
+      --text:          #E6EDF3;
+      --text-muted:    #8B949E;
+      --font-display:  'Syne', sans-serif;
+      --font-body:     'DM Sans', sans-serif;
+      --radius:        14px;
+      --radius-sm:     9px;
+      --shadow-card:   0 4px 24px rgba(0,0,0,0.4);
+      --shadow-glow:   0 0 24px rgba(99,102,241,0.25);
+    }
+
+    html, body { height: 100%; }
+
     body {
-      font-family: Arial, Helvetica, sans-serif;
-      margin: 0;
-      background: #f4f4f4;
-      color: #222;
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
+    /* ── HEADER ───────────────────────────────────── */
     header {
-      background: #007bff;
-      color: white;
-      padding: 16px 18px;
+      background: linear-gradient(135deg, #1a1060 0%, #2d1b8e 40%, #4338CA 100%);
+      padding: 0;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.5);
     }
 
-    .container {
-      padding: 16px;
-      max-width: 980px;
+    .header-inner {
+      max-width: 1100px;
       margin: 0 auto;
-    }
-
-    .top-row {
+      padding: 14px 20px;
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
       align-items: center;
-      margin-bottom: 12px;
+      justify-content: space-between;
+      gap: 12px;
     }
 
-    .card {
-      background: #fff;
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(255,255,255,0.15);
       border-radius: 10px;
-      padding: 12px 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      flex: 1;
-      min-width: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.2);
     }
 
-    .label {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 6px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
-    .value {
+    .header-title {
+      font-family: var(--font-display);
       font-size: 18px;
       font-weight: 800;
+      color: white;
+      letter-spacing: -0.3px;
+    }
+
+    .header-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      font-weight: 400;
+    }
+
+    /* Live badge */
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(5,150,105,0.2);
+      border: 1px solid rgba(16,185,129,0.35);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #34D399;
+      letter-spacing: 0.5px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #34D399;
+      animation: livePulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── MAIN LAYOUT ──────────────────────────────── */
+    .page-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 32px;
+    }
+
+    /* ── STATUS CARDS STRIP ───────────────────────── */
+    .cards-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(99,102,241,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Status card special states */
+    .stat-card.status-inprogress {
+      border-color: rgba(99,102,241,0.4);
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.15), var(--shadow-glow);
+    }
+
+    .stat-card.status-completed {
+      border-color: rgba(5,150,105,0.4);
+      box-shadow: 0 0 16px rgba(5,150,105,0.15);
+    }
+
+    .card-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card-label i { font-size: 10px; }
+
+    .card-value {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .card-value.in-progress { color: #818CF8; }
+    .card-value.completed   { color: #34D399; }
+    .card-value.scheduled   { color: var(--amber); }
+
+    .card-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── ROUTE BANNER ─────────────────────────────── */
+    .route-banner {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .route-point {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+    }
+
+    .route-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .route-dot.pickup { background: #818CF8; box-shadow: 0 0 8px rgba(129,140,248,0.6); }
+    .route-dot.drop   { background: #34D399; box-shadow: 0 0 8px rgba(52,211,153,0.6); }
+
+    .route-arrow {
+      color: var(--text-muted);
+      font-size: 12px;
+      flex: 1;
+      text-align: center;
+      min-width: 40px;
+    }
+
+    /* ── MAP ──────────────────────────────────────── */
+    .map-wrap {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 16px;
     }
 
     #map {
-      height: 70vh;
+      height: 62vh;
+      min-height: 320px;
       width: 100%;
-      border-radius: 10px;
-      background: #eaeaea;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      background: #1a1a2e;
     }
 
-    .muted {
-      color: #666;
-      font-size: 13px;
-    }
-
-    .pill {
-      display: inline-block;
-      background: #ff9800;
-      color: #fff;
-      padding: 6px 10px;
+    /* Map overlay label */
+    .map-overlay-label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(13,17,23,0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 999px;
-      font-weight: 800;
+      padding: 5px 12px;
       font-size: 12px;
+      color: var(--text);
+      font-weight: 600;
+      z-index: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .pill.completed {
-      background: #2e7d32;
+    .map-overlay-label .ping {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #818CF8;
+      animation: livePulse 1.4s infinite;
     }
+
+    /* ── BOTTOM ACTIONS ───────────────────────────── */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 560px) {
+      .actions-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── BUTTONS ─────────────────────────────────── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px 18px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.1px;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-sos {
+      background: linear-gradient(135deg, #b91c1c, #E11D48);
+      color: white;
+      box-shadow: 0 4px 18px rgba(225,29,72,0.35);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-sos:hover {
+      box-shadow: 0 6px 24px rgba(225,29,72,0.55);
+      transform: translateY(-1px);
+    }
+
+    .btn-nav {
+      background: linear-gradient(135deg, #065f46, #059669);
+      color: white;
+      box-shadow: 0 4px 18px rgba(5,150,105,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-nav:hover {
+      box-shadow: 0 6px 24px rgba(5,150,105,0.5);
+      transform: translateY(-1px);
+    }
+
+    /* ── OTP CARD ────────────────────────────────── */
+    .otp-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .otp-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .otp-card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #818CF8;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .otp-card-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .otp-card-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .otp-display {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      color: #818CF8;
+      text-align: center;
+      padding: 14px;
+      background: rgba(99,102,241,0.07);
+      border: 1px dashed rgba(99,102,241,0.25);
+      border-radius: var(--radius-sm);
+      margin-bottom: 14px;
+    }
+
+    .otp-display.hidden-otp {
+      color: var(--text-muted);
+      letter-spacing: 12px;
+      font-size: 22px;
+    }
+
+    .btn-reveal {
+      background: rgba(99,102,241,0.15);
+      color: #818CF8;
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: var(--radius-sm);
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-body);
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-reveal:hover {
+      background: rgba(99,102,241,0.25);
+      border-color: rgba(99,102,241,0.5);
+    }
+
+    .otp-input-wrap {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .otp-input {
+      width: 100%;
+      padding: 13px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      font-family: var(--font-display);
+      letter-spacing: 4px;
+      text-align: center;
+      transition: border-color 0.2s;
+      outline: none;
+      margin-bottom: 10px;
+    }
+
+    .otp-input:focus {
+      border-color: rgba(99,102,241,0.6);
+      background: rgba(99,102,241,0.06);
+    }
+
+    .otp-input::placeholder {
+      letter-spacing: 2px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .btn-verify {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 13px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-body);
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    }
+
+    .btn-verify:hover {
+      box-shadow: 0 6px 22px rgba(99,102,241,0.5);
+      transform: translateY(-1px);
+    }
+
+    .otp-status {
+      margin-top: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-align: center;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      display: none;
+    }
+
+    .otp-status.success {
+      background: rgba(5,150,105,0.12);
+      color: #34D399;
+      border: 1px solid rgba(5,150,105,0.25);
+      display: block;
+    }
+
+    .otp-status.error {
+      background: rgba(225,29,72,0.1);
+      color: #FB7185;
+      border: 1px solid rgba(225,29,72,0.2);
+      display: block;
+    }
+
+    .otp-status.info {
+      background: rgba(99,102,241,0.1);
+      color: #818CF8;
+      border: 1px solid rgba(99,102,241,0.2);
+      display: block;
+    }
+
+    /* ── SOS STATUS ──────────────────────────────── */
+    #sosStatus {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── COMPLETED OVERLAY ───────────────────────── */
+    .completed-banner {
+      display: none;
+      background: linear-gradient(135deg, rgba(5,150,105,0.15), rgba(16,185,129,0.08));
+      border: 1px solid rgba(5,150,105,0.3);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .completed-banner.show { display: block; }
+
+    .completed-banner-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    .completed-banner-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      color: #34D399;
+      margin-bottom: 4px;
+    }
+
+    .completed-banner-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* ── LEAFLET CUSTOM OVERRIDES ─────────────────── */
+    .leaflet-container { background: #1a1a2e !important; }
+    .leaflet-tile     { filter: brightness(0.9) saturate(0.8); }
+
+    /* car marker ripple */
+    .driver-marker-wrap {
+      position: relative;
+    }
+
+    .driver-marker-ripple {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid rgba(99,102,241,0.5);
+      animation: ripple 2s ease-out infinite;
+    }
+
+    @keyframes ripple {
+      0%   { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────── */
+    @media (max-width: 600px) {
+      .cards-strip { grid-template-columns: repeat(2, 1fr); }
+      #map          { height: 52vh; }
+      .otp-display  { font-size: 26px; letter-spacing: 6px; }
+    }
+
+    @media (max-width: 380px) {
+      .cards-strip { grid-template-columns: 1fr; }
+    }
+
+    /* Leaflet popup dark */
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-card) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 10px !important;
+      box-shadow: var(--shadow-card) !important;
+    }
+
+    .leaflet-popup-tip { background: var(--bg-card) !important; }
   </style>
 </head>
 <body>
+
+  <!-- ── HEADER ──────────────────────────────────────── -->
   <header>
-    <h2 style="margin:0;">Live Ride Tracking</h2>
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="header-icon">🚗</div>
+        <div>
+          <div class="header-title">SahaVahan</div>
+          <div class="header-sub">Live Ride Tracking</div>
+        </div>
+      </div>
+      <div class="live-badge" id="liveBadge">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+    </div>
   </header>
 
-  <div class="container">
-    <div class="top-row">
-      <div class="card">
-        <div class="label">Ride Status</div>
-        <div class="value" id="statusText">Ongoing</div>
-        <div class="muted" id="statusSub">Moving...</div>
+  <!-- ── PAGE CONTENT ────────────────────────────────── -->
+  <div class="page-wrap">
+
+    <!-- Completion Banner (hidden until completed) -->
+    <div class="completed-banner" id="completedBanner">
+      <div class="completed-banner-icon">🎉</div>
+      <div class="completed-banner-title">Ride Completed!</div>
+      <div class="completed-banner-sub">You've arrived safely at your destination.</div>
+    </div>
+
+    <!-- ── STATUS CARDS ────────────────────────────── -->
+    <div class="cards-strip">
+
+      <div class="stat-card" id="statusCard">
+        <div class="card-label"><i class="fa-solid fa-circle-dot"></i> Ride Status</div>
+        <div class="card-value" id="statusText">Loading…</div>
+        <div class="card-sub" id="statusSub">Please wait</div>
       </div>
 
-      <div class="card">
-        <div class="label">Your Pickup</div>
-        <div class="value" id="pickupText">—</div>
-        <div class="muted" id="pickupSub">—</div>
+      <div class="stat-card">
+        <div class="card-label"><i class="fa-solid fa-location-dot"></i> Your Pickup</div>
+        <div class="card-value" id="pickupText">—</div>
+        <div class="card-sub" id="pickupSub">Boarding point</div>
       </div>
 
-      <div class="card">
-        <div class="label">Your Drop</div>
-        <div class="value" id="dropText">—</div>
-        <div class="muted" id="dropSub">—</div>
+      <div class="stat-card">
+        <div class="card-label"><i class="fa-solid fa-flag-checkered"></i> Your Drop</div>
+        <div class="card-value" id="dropText">—</div>
+        <div class="card-sub" id="dropSub">Destination</div>
       </div>
 
-      <div class="card">
-        <div class="label">Driver</div>
-        <div class="value" id="driverText">—</div>
+      <div class="stat-card">
+        <div class="card-label"><i class="fa-solid fa-user-tie"></i> Driver</div>
+        <div class="card-value" id="driverText">—</div>
+        <div class="card-sub">Assigned driver</div>
       </div>
 
-      <div class="card">
-        <div class="label">Drop OTP</div>
-        <div class="value" id="dropOtpText">—</div>
-        <div class="muted" id="dropOtpSub">Reveal at destination</div>
-        <div style="margin-top:8px;">
-          <button id="revealDropOtpBtn" style="background:#198754;color:white;border:none;border-radius:8px;padding:10px 12px;font-weight:900;cursor:pointer;width:100%;">🔒 Reveal Drop OTP</button>
-        </div>
-        <div style="margin-top:10px;display:none;" id="dropOtpVerifyWrap">
-          <input id="dropOtpInput" placeholder="Enter Drop OTP" style="width:100%;padding:12px;border-radius:10px;border:2px solid #ddd;" />
-          <button id="verifyDropOtpBtn" style="margin-top:8px;background:#0b5ed7;color:white;border:none;border-radius:10px;padding:12px 14px;font-weight:900;cursor:pointer;width:100%;">✅ Verify Drop</button>
-          <div id="dropOtpStatus" style="margin-top:8px;font-size:13px;color:#555;"></div>
-        </div>
-      </div>
+    </div>
 
-      <div class="card">
-        <div class="label">Map</div>
-        <div class="muted">📍 Driver location updates every few seconds</div>
+    <!-- ── ROUTE BANNER ────────────────────────────── -->
+    <div class="route-banner" id="routeBanner" style="display:none;">
+      <div class="route-point">
+        <div class="route-dot pickup"></div>
+        <span id="routeOrigin">—</span>
+      </div>
+      <div class="route-arrow">
+        <i class="fa-solid fa-arrow-right"></i>
+      </div>
+      <div class="route-point">
+        <div class="route-dot drop"></div>
+        <span id="routeDest">—</span>
       </div>
     </div>
 
+    <!-- ── MAP ────────────────────────────────────── -->
+    <div class="map-wrap">
+      <div class="map-overlay-label">
+        <div class="ping"></div>
+        <span id="mapLabel">Driver location updating…</span>
+      </div>
+      <div id="map"></div>
+    </div>
 
-    <div id="map"></div>
-  </div>
+    <!-- ── ACTION BUTTONS ─────────────────────────── -->
+    <div class="actions-grid">
+      <button class="btn btn-sos" id="sosBtn" onclick="triggerSOS()">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Emergency SOS
+      </button>
+      <button class="btn btn-nav" id="navigatePickupBtn" onclick="navigateToPickup()">
+        <i class="fa-solid fa-compass"></i>
+        Navigate to Pickup
+      </button>
+    </div>
 
-  <!-- SOS Button -->
-  <div style="padding:16px; max-width:980px; margin:0 auto;">
-    <button id="sosBtn" onclick="triggerSOS()">🚨 EMERGENCY SOS</button>
-    <div id="sosStatus" style="margin-top:10px; font-size:13px; color:#555;"></div>
-  </div>
+    <div id="sosStatus"></div>
 
-  <div style="padding:16px; max-width:980px; margin:0 auto;">
-    <button id="navigatePickupBtn" onclick="navigateToPickup()" style="width:100%; background:#198754; color:white; font-size:18px; padding:15px; border:none; border-radius:10px; font-weight:900; cursor:pointer;">
-      🧭 Navigate To Pickup
-    </button>
-  </div>
+    <!-- ── DROP OTP CARD ──────────────────────────── -->
+    <div class="otp-card">
+      <div class="otp-card-header">
+        <div class="otp-card-icon"><i class="fa-solid fa-lock"></i></div>
+        <div>
+          <div class="otp-card-title">Drop OTP Verification</div>
+          <div class="otp-card-sub" id="dropOtpSub">Reveal when you reach your destination</div>
+        </div>
+      </div>
 
+      <!-- OTP display (shown after reveal or verified) -->
+      <div class="otp-display hidden-otp" id="dropOtpText">● ● ● ● ● ●</div>
 
-  <style>
-    #sosBtn{
-      background:red;
-      color:white;
-      font-size:18px;
-      padding:15px;
-      border:none;
-      border-radius:10px;
-      width:100%;
-      max-width:520px;
-      cursor:pointer;
-    }
-  </style>
+      <!-- Reveal button -->
+      <button class="btn-reveal" id="revealDropOtpBtn">
+        <i class="fa-solid fa-eye"></i>
+        Reveal Drop OTP
+      </button>
 
+      <!-- Input + verify (shown after reveal) -->
+      <div class="otp-input-wrap" id="dropOtpVerifyWrap">
+        <input
+          class="otp-input"
+          id="dropOtpInput"
+          type="number"
+          placeholder="Enter 6-digit OTP"
+          maxlength="6"
+          inputmode="numeric"
+        />
+        <button class="btn-verify" id="verifyDropOtpBtn">
+          <i class="fa-solid fa-circle-check"></i>
+          Verify & Complete Drop
+        </button>
+      </div>
+
+      <div class="otp-status" id="dropOtpStatus"></div>
+    </div>
+
+  </div><!-- /page-wrap -->
+
+  <!-- ── SCRIPTS ─────────────────────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    // SOS: capture location and call /api/sos/trigger
-    function setSOSStatus(msg){
-      const el = document.getElementById('sosStatus');
-      if (el) el.textContent = msg;
-    }
+    // ── Helpers ──────────────────────────────────────
+    const qs  = (id) => document.getElementById(id);
+    const params = new URLSearchParams(window.location.search);
+    const rideId = params.get('rideId');
 
-    async function triggerSOS(){
-      try {
-        const username = localStorage.getItem('username');
-        if (!username) {
-          alert('Session expired! Please login again.');
-          window.location.href = 'login.html';
-          return;
-        }
-
-        const rideId = new URLSearchParams(window.location.search).get('rideId');
-        if (!rideId) {
-          alert('Missing rideId in query string.');
-          return;
-        }
-
-        setSOSStatus('Getting live location...');
-
-        navigator.geolocation.getCurrentPosition(
-          async (position)=>{
-            try {
-              const lat = position.coords.latitude;
-              const lng = position.coords.longitude;
-
-              setSOSStatus('Sending SOS...');
-
-              const res = await fetch('/api/sos/trigger', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ username, lat, lng, rideId })
-              });
-
-              const data = await res.json().catch(()=>({}));
-              if (!res.ok) throw new Error(data?.message || 'SOS failed');
-
-              setSOSStatus('SOS Triggered. Help is on the way.');
-            } catch (e){
-              console.error(e);
-              setSOSStatus('SOS failed to send.');
-              alert('SOS failed to send.');
-            }
-          },
-          (err)=>{
-            console.error('geolocation error', err);
-            setSOSStatus('Location permission denied.');
-            alert('Location permission denied.');
-          },
-          { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
-        );
-      } catch(e){
-        console.error(e);
-        setSOSStatus('SOS failed.');
-      }
-    }
-
-    // ----- RideId from query string -----
-    const rideId = new URLSearchParams(window.location.search).get('rideId');
     if (!rideId) {
-      alert('Missing rideId in query string. Example: trackRide.html?rideId=...');
+      document.body.innerHTML = `<div style="padding:40px;text-align:center;font-family:sans-serif;color:#E11D48;">
+        <h2>❌ Missing rideId</h2><p>Example: trackRide.html?rideId=RIDE_ID&bookingId=BOOKING_ID</p></div>`;
       throw new Error('Missing rideId');
     }
 
+    // ── Map Setup ─────────────────────────────────────
+    const map = L.map('map', { zoomControl: true, attributionControl: true })
+                  .setView([17.0, 79.5], 7);
 
-    // ----- Leaflet map -----
-    const map = L.map('map').setView([20.5937,78.9629], 13);
-    const driverMarker = L.marker([0, 0]).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '© <a href="https://carto.com/" style="color:#818CF8">CartoDB</a>'
+    }).addTo(map);
 
-    // ----- Status UI -----
-    const statusText = document.getElementById('statusText');
-    const statusSub = document.getElementById('statusSub');
-    const driverText = document.getElementById('driverText');
+    // Custom car marker with ripple
+    const driverIcon = L.divIcon({
+      className: '',
+      html: `<div class="driver-marker-wrap">
+               <div class="driver-marker-ripple"></div>
+               <div style="
+                 background: linear-gradient(135deg,#4338CA,#6366F1);
+                 border: 2.5px solid rgba(255,255,255,0.85);
+                 width: 34px; height: 34px;
+                 border-radius: 50%;
+                 box-shadow: 0 0 18px rgba(99,102,241,0.7);
+                 display: flex; align-items: center; justify-content: center;
+                 color: white; font-size: 15px;
+                 position: relative; z-index: 1;
+               "><i class="fa-solid fa-car"></i></div>
+             </div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+      popupAnchor: [0, -20]
+    });
 
-    const pickupText = document.getElementById('pickupText');
-    const pickupSub = document.getElementById('pickupSub');
-    const dropText = document.getElementById('dropText');
-    const dropSub = document.getElementById('dropSub');
+    const driverMarker = L.marker([17.0, 79.5], { icon: driverIcon }).addTo(map);
+    driverMarker.bindPopup('<b style="color:#818CF8">🚗 Driver Location</b><br><span style="color:#8B949E;font-size:12px">Updating live...</span>');
 
+    // pickup / drop markers
+    let pickupMarker = null, dropMarker = null;
 
-    const setCompletedUI = () => {
-      statusText.textContent = 'Completed';
-      statusText.classList?.add('completed');
-      statusSub.textContent = 'Arrived.';
-    };
+    const pickupIcon = L.divIcon({
+      className: '',
+      html: `<div style="background:#818CF8;border:2px solid white;width:16px;height:16px;border-radius:50%;box-shadow:0 0 10px rgba(129,140,248,0.8)"></div>`,
+      iconSize: [16,16], iconAnchor: [8,8]
+    });
 
-    const setInProgressUI = () => {
-      statusText.textContent = 'In Progress';
-      statusSub.textContent = 'Moving...';
-    };
+    const dropIcon = L.divIcon({
+      className: '',
+      html: `<div style="background:#34D399;border:2px solid white;width:16px;height:16px;border-radius:50%;box-shadow:0 0 10px rgba(52,211,153,0.8)"></div>`,
+      iconSize: [16,16], iconAnchor: [8,8]
+    });
 
-    // ----- Socket.IO -----
+    // ── UI State ──────────────────────────────────────
+    let lastRideStatus = null;
+
+    function setStatusUI(status) {
+      const el = qs('statusText');
+      const sub = qs('statusSub');
+      const card = qs('statusCard');
+
+      card.classList.remove('status-inprogress','status-completed');
+
+      if (status === 'In Progress') {
+        el.textContent = 'In Progress';
+        el.className = 'card-value in-progress';
+        sub.textContent = '🚗 Moving now…';
+        card.classList.add('status-inprogress');
+        qs('liveBadge').style.display = 'flex';
+        qs('mapLabel').textContent = 'Driver location updating live';
+      } else if (status === 'Completed') {
+        el.textContent = 'Completed';
+        el.className = 'card-value completed';
+        sub.textContent = '✅ Arrived safely';
+        card.classList.add('status-completed');
+        qs('liveBadge').style.display = 'none';
+        qs('mapLabel').textContent = 'Ride completed';
+        qs('completedBanner').classList.add('show');
+      } else if (status === 'Scheduled') {
+        el.textContent = 'Scheduled';
+        el.className = 'card-value scheduled';
+        sub.textContent = '⏳ Waiting for driver';
+        qs('liveBadge').style.display = 'none';
+      } else {
+        el.textContent = status || 'Loading…';
+        el.className = 'card-value';
+        sub.textContent = '';
+      }
+      lastRideStatus = status;
+    }
+
+    function setSOSStatus(msg, type='') {
+      const el = qs('sosStatus');
+      el.textContent = msg;
+      el.style.color = type === 'error' ? '#FB7185' : type === 'ok' ? '#34D399' : '';
+    }
+
+    // ── Socket.IO ─────────────────────────────────────
     const socket = io();
+    socket.on('connect', () => {
+      console.log('[Socket] Connected:', socket.id);
+      socket.emit('passengerJoinRide', { rideId });
+    });
 
-    // Join ride room
-    socket.emit('passengerJoinRide', { rideId });
+    socket.on('locationUpdated', (data) => {
+      if (!data || String(data.rideId) !== String(rideId)) return;
+      if (lastRideStatus === 'Completed') return;
 
+      const { lat, lng } = data;
+      if (typeof lat !== 'number' || typeof lng !== 'number') return;
+
+      driverMarker.setLatLng([lat, lng]);
+      map.panTo([lat, lng], { animate: true, duration: 0.8 });
+
+      if (!socket.__pollingStarted) {
+        socket.__pollingStarted = true;
+        setInterval(async () => {
+          try {
+            const r = await fetch(`/api/rides/status/${rideId}`);
+            if (!r.ok) return;
+            const s = await r.json();
+            if (s.status !== lastRideStatus) setStatusUI(s.status);
+          } catch (_) {}
+        }, 5000);
+      }
+    });
+
+    // ── Load Initial Ride ─────────────────────────────
+    async function loadInitialRide() {
+      try {
+        const res = await fetch(`/api/rides/status/${rideId}`);
+        if (!res.ok) return;
+        const d = await res.json();
+
+        qs('driverText').textContent = d.username || '—';
+        setStatusUI(d.status);
+
+        if (d.source || d.destination) {
+          qs('routeOrigin').textContent = d.source || '—';
+          qs('routeDest').textContent   = d.destination || '—';
+          qs('routeBanner').style.display = 'flex';
+        }
+
+        if (typeof d.driverLat === 'number' && typeof d.driverLng === 'number' && (d.driverLat !== 0 || d.driverLng !== 0)) {
+          driverMarker.setLatLng([d.driverLat, d.driverLng]);
+          map.setView([d.driverLat, d.driverLng], 13);
+        }
+
+        window.__boardingCoords = { lat: d.boardingLat, lng: d.boardingLng };
+      } catch (e) {
+        console.error('loadInitialRide error:', e);
+      }
+    }
+
+    // ── Load Passenger Booking ───────────────────────
     async function loadPassengerBooking() {
       try {
         const username = localStorage.getItem('username');
@@ -279,125 +917,27 @@
 
         const res = await fetch(`/api/passenger-bookings/${rideId}?username=${encodeURIComponent(username)}`);
         if (!res.ok) return;
-        const data = await res.json();
+        const d = await res.json();
 
-        if (pickupText) pickupText.textContent = data.boardingPoint || '—';
-        if (dropText) dropText.textContent = data.dropPoint || '—';
+        qs('pickupText').textContent = d.boardingPoint || '—';
+        qs('dropText').textContent   = d.dropPoint || '—';
 
-        if (pickupSub) pickupSub.textContent = 'Your Pickup';
-        if (dropSub) dropSub.textContent = 'Your Drop';
+        if (d.boardingLat && d.boardingLng) {
+          pickupMarker = L.marker([d.boardingLat, d.boardingLng], { icon: pickupIcon })
+            .addTo(map)
+            .bindPopup('<b style="color:#818CF8">📍 Your Pickup</b>');
+        }
+        if (d.dropLat && d.dropLng) {
+          dropMarker = L.marker([d.dropLat, d.dropLng], { icon: dropIcon })
+            .addTo(map)
+            .bindPopup('<b style="color:#34D399">🏁 Your Drop</b>');
+        }
       } catch (e) {
         console.error('loadPassengerBooking error:', e);
       }
     }
 
-    // Optional: fetch initial ride details for driver name + status
-    async function loadInitialRide() {
-      try {
-        const res = await fetch(`/api/rides/status/${rideId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-
-        driverText.textContent = data.username || '—';
-
-        if (data.status === 'Completed') {
-          setCompletedUI();
-        } else if (data.status === 'In Progress') {
-          setInProgressUI();
-        } else {
-          // Scheduled (tracking is off for Scheduled, but show a safe label)
-          statusText.textContent = data.status || 'Scheduled';
-          statusSub.textContent = 'Waiting...';
-        }
-
-
-        if (typeof data.driverLat === 'number' && typeof data.driverLng === 'number') {
-          driverMarker.setLatLng([data.driverLat, data.driverLng]);
-          map.panTo([data.driverLat, data.driverLng]);
-        }
-
-        // Prefetch navigation coordinates if available
-        window.__boardingCoords = {
-          lat: data.boardingLat,
-          lng: data.boardingLng
-        };
-      } catch (e) {
-        console.error('Initial ride load failed:', e);
-      }
-    }
-
-
-    await loadPassengerBooking();
-
-    // Live updates
-
-    let lastRideStatus = null;
-    socket.on('locationUpdated', async (data) => {
-      if (!data || String(data.rideId) !== String(rideId)) return;
-
-      // If ride is completed, ignore updates (we still may get stragglers)
-      if (lastRideStatus === 'Completed') return;
-
-      // Tracking OFF unless ride is In Progress
-      if (lastRideStatus && lastRideStatus !== 'In Progress') return;
-
-
-      const { lat, lng } = data;
-      if (typeof lat !== 'number' || typeof lng !== 'number') return;
-
-      driverMarker.setLatLng([lat, lng]);
-      map.panTo([lat, lng]);
-
-      // Update UI as ongoing unless we know completed
-      if (statusText.textContent !== 'In Progress') {
-        // Keep completed state if already set
-        if (lastRideStatus !== 'Completed') setInProgressUI();
-      }
-
-        // Poll ride status occasionally to auto-stop.
-        // (Simple approach without additional socket events.)
-        if (!socket.__statusPollingStarted) {
-
-        socket.__statusPollingStarted = true;
-        setInterval(async () => {
-          try {
-            const r = await fetch(`/api/rides/status/${rideId}`);
-            if (!r.ok) return;
-            const s = await r.json();
-            lastRideStatus = s.status;
-            if (s.status === 'Completed') {
-              setCompletedUI();
-            }
-          } catch (_) {}
-        }, 4000);
-      }
-    });
-
-    // Navigation action
-    function navigateToPickup() {
-      try {
-        const coords = window.__boardingCoords;
-        const lat = coords?.lat;
-        const lng = coords?.lng;
-        if (typeof lat !== 'number' || typeof lng !== 'number') {
-          alert('Pickup coordinates not available for this booking.');
-          return;
-        }
-
-        window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
-      } catch (e) {
-        console.error('navigateToPickup error:', e);
-        alert('Failed to navigate to pickup.');
-      }
-    }
-
-    // ---- Drop OTP reveal + verify (Passenger) ----
-    const revealDropOtpBtn = document.getElementById('revealDropOtpBtn');
-    const dropOtpVerifyWrap = document.getElementById('dropOtpVerifyWrap');
-    const dropOtpInput = document.getElementById('dropOtpInput');
-    const verifyDropOtpBtn = document.getElementById('verifyDropOtpBtn');
-    const dropOtpStatus = document.getElementById('dropOtpStatus');
-
+    // ── Drop OTP Logic ───────────────────────────────
     let __dropOtpCache = null;
 
     async function loadDropOtpState() {
@@ -407,82 +947,127 @@
 
         const res = await fetch(`/api/passenger-bookings/${rideId}?username=${encodeURIComponent(username)}`);
         if (!res.ok) return;
-        const data = await res.json();
+        const d = await res.json();
 
-        if (data.dropOTPVerified) {
-          if (dropOtpStatus) dropOtpStatus.textContent = '✅ Dropped Successfully';
-          if (dropOtpText) dropOtpText.textContent = '—';
-          if (revealDropOtpBtn) revealDropOtpBtn.style.display = 'none';
-          if (dropOtpVerifyWrap) dropOtpVerifyWrap.style.display = 'none';
+        if (d.dropOTPVerified) {
+          showOtpSuccess('✅ Already dropped successfully!');
+          qs('revealDropOtpBtn').style.display = 'none';
+          qs('dropOtpText').textContent = '✓ Verified';
+          qs('dropOtpText').classList.remove('hidden-otp');
+          qs('dropOtpText').style.fontSize = '20px';
+          qs('dropOtpText').style.letterSpacing = '2px';
+          qs('dropOtpText').style.color = '#34D399';
           return;
         }
 
-        // Show booked drop OTP during ride. Reveal button unlocks it.
-        __dropOtpCache = data.dropOTP || null;
-        if (dropOtpText) dropOtpText.textContent = '—';
+        __dropOtpCache = d.dropOTP || null;
       } catch (e) {
         console.error('loadDropOtpState error:', e);
       }
     }
 
-    if (revealDropOtpBtn) {
-      revealDropOtpBtn.addEventListener('click', () => {
-        if (!__dropOtpCache) {
-          alert('Drop OTP not available yet.');
-          return;
-        }
-        if (dropOtpText) dropOtpText.textContent = String(__dropOtpCache);
-        if (dropOtpVerifyWrap) dropOtpVerifyWrap.style.display = 'block';
-        if (revealDropOtpBtn) revealDropOtpBtn.style.display = 'none';
-      });
+    function showOtpStatus(msg, type) {
+      const el = qs('dropOtpStatus');
+      el.textContent = msg;
+      el.className = 'otp-status ' + type;
     }
 
-    if (verifyDropOtpBtn) {
-      verifyDropOtpBtn.addEventListener('click', async () => {
-        try {
-          if (!dropOtpInput || !dropOtpInput.value) {
-            alert('Enter Drop OTP');
-            return;
+    function showOtpSuccess(msg) { showOtpStatus(msg, 'success'); }
+    function showOtpError(msg)   { showOtpStatus(msg, 'error'); }
+    function showOtpInfo(msg)    { showOtpStatus(msg, 'info'); }
+
+    qs('revealDropOtpBtn').addEventListener('click', () => {
+      if (!__dropOtpCache) {
+        showOtpInfo('Drop OTP not loaded yet. Please wait or refresh.');
+        return;
+      }
+      const otpEl = qs('dropOtpText');
+      otpEl.textContent = __dropOtpCache;
+      otpEl.classList.remove('hidden-otp');
+      qs('dropOtpVerifyWrap').style.display = 'block';
+      qs('revealDropOtpBtn').style.display = 'none';
+    });
+
+    qs('verifyDropOtpBtn').addEventListener('click', async () => {
+      const otp = qs('dropOtpInput').value.trim();
+      if (!otp) { showOtpError('Please enter the 6-digit OTP'); return; }
+
+      const bookingId = params.get('bookingId');
+      if (!bookingId) { showOtpError('Missing bookingId in URL. Add ?bookingId=...'); return; }
+
+      showOtpInfo('Verifying…');
+      qs('verifyDropOtpBtn').disabled = true;
+
+      try {
+        const username = localStorage.getItem('username');
+        const r = await fetch('/api/rides/verify-drop-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId, otp, username })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data?.message || 'Verification failed');
+
+        showOtpSuccess('✅ Drop Verified! Ride Completed.');
+        qs('dropOtpVerifyWrap').style.display = 'none';
+        qs('dropOtpText').textContent = '✓ Verified';
+        qs('dropOtpText').style.color = '#34D399';
+        setStatusUI('Completed');
+
+      } catch (e) {
+        showOtpError('❌ ' + (e.message || 'Invalid OTP'));
+        qs('verifyDropOtpBtn').disabled = false;
+      }
+    });
+
+    // ── SOS ──────────────────────────────────────────
+    async function triggerSOS() {
+      const username = localStorage.getItem('username');
+      if (!username) { alert('Please login first.'); return; }
+
+      setSOSStatus('Getting your location…');
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            setSOSStatus('Sending SOS…');
+            const r = await fetch('/api/sos/trigger', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username, lat: pos.coords.latitude, lng: pos.coords.longitude, rideId })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d?.message || 'SOS failed');
+            setSOSStatus('🚨 SOS sent! Help is on the way.', 'ok');
+          } catch (e) {
+            setSOSStatus('SOS failed: ' + e.message, 'error');
           }
-
-          // bookingId is required for drop verification
-          const bookingId = new URLSearchParams(window.location.search).get('bookingId');
-          if (!bookingId) {
-            alert('Missing bookingId in query string. Use trackRide.html?rideId=...&bookingId=...');
-            return;
-          }
-
-          if (!dropOtpStatus) return;
-          dropOtpStatus.textContent = 'Verifying...';
-
-          const username = localStorage.getItem('username');
-          const otp = String(dropOtpInput.value).trim();
-
-          const r = await fetch('/api/rides/verify-drop-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookingId, otp, username })
-          });
-
-          const data = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(data?.message || 'Verify failed');
-
-          dropOtpStatus.textContent = '✅ Dropped Successfully';
-          if (dropOtpText) dropOtpText.textContent = otp;
-          if (dropOtpVerifyWrap) dropOtpVerifyWrap.style.display = 'none';
-
-        } catch (e) {
-          console.error(e);
-          if (dropOtpStatus) dropOtpStatus.textContent = '❌ Invalid OTP';
-        }
-      });
+        },
+        () => setSOSStatus('Location access denied. Cannot send SOS.', 'error'),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
     }
 
-    await loadInitialRide();
-    await loadDropOtpState();
+    // ── Navigate to Pickup ────────────────────────────
+    function navigateToPickup() {
+      const coords = window.__boardingCoords;
+      if (coords?.lat && coords?.lng) {
+        window.open(`https://www.google.com/maps?q=${coords.lat},${coords.lng}`, '_blank');
+      } else {
+        const pickupName = qs('pickupText').textContent;
+        if (pickupName && pickupName !== '—') {
+          window.open(`https://www.google.com/maps/search/${encodeURIComponent(pickupName)}`, '_blank');
+        } else {
+          alert('Pickup coordinates not available for this booking.');
+        }
+      }
+    }
+
+    // ── INIT ──────────────────────────────────────────
+    (async () => {
+      await Promise.all([loadPassengerBooking(), loadInitialRide()]);
+      await loadDropOtpState();
+    })();
   </script>
 </body>
 </html>
-
-
-

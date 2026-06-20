@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.alert = function(msg) { console.log("ALERT:", msg); };
+    window.confirm = function(msg) { console.log("CONFIRM:", msg); return true; };
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Driver Verification — SahaVahan</title>
   <meta name="theme-color" content="#4338CA">
-  
+  <link rel="icon" type="image/png" href="/images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
@@ -205,14 +209,41 @@
   </section>
 
   <section class="si reveal">
-    <div class="status-card">
+    <div class="status-card" id="statusCard">
       <div class="status-left">
         <div class="status-title">Verification Center</div>
-        <div class="status-desc">Submit your official documents for admin review.</div>
+        <div class="status-desc" id="statusDesc">Submit your official documents for admin review.</div>
       </div>
       <div class="status-badge" id="verificationStatusBadge">
-        <i class="fa-solid fa-clock-rotate-left"></i> Pending Review
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading Status…
       </div>
+    </div>
+
+    <!-- Rejection remarks banner -->
+    <div id="rejectionBanner" style="display:none;background:rgba(225,29,72,0.06);border:1px solid rgba(225,29,72,0.18);border-radius:14px;padding:18px 24px;margin-bottom:24px;">
+      <div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--rose);margin-bottom:6px;"><i class="fa-solid fa-circle-exclamation"></i> Verification Rejected</div>
+      <div id="rejectionRemarks" style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">Please resubmit with corrected documents.</div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--text-muted);">Correct the issues mentioned above and submit again below.</div>
+    </div>
+
+    <!-- Approved banner -->
+    <div id="approvedBanner" style="display:none;background:rgba(5,150,105,0.07);border:1px solid rgba(5,150,105,0.2);border-radius:14px;padding:24px 28px;margin-bottom:24px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">🎉</div>
+      <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--green);margin-bottom:8px;">You're a Verified Driver!</div>
+      <div style="font-size:14px;color:var(--text-muted);margin-bottom:18px;">Your documents have been reviewed and approved by our admin team. You can now publish rides.</div>
+      <a href="profile.html" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;padding:12px 28px;border-radius:12px;text-decoration:none;font-weight:600;font-size:14px;">
+        <i class="fa-solid fa-user"></i> Go to My Profile
+      </a>
+    </div>
+
+    <!-- Pending banner -->
+    <div id="pendingBanner" style="display:none;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2);border-radius:14px;padding:24px 28px;margin-bottom:24px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:12px;">⏳</div>
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#B45309;margin-bottom:8px;">Documents Under Review</div>
+      <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:16px;">Your verification documents have been submitted successfully. Our admin team will review them within 24–48 hours. You'll receive a notification once reviewed.</div>
+      <a href="profile.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-surface-muted);color:var(--text-muted);padding:11px 24px;border-radius:12px;text-decoration:none;font-weight:600;font-size:14px;border:1px solid var(--border);">
+        <i class="fa-solid fa-arrow-left"></i> Back to Profile
+      </a>
     </div>
 
     <div class="timeline">
@@ -415,6 +446,72 @@
       window.location.href = "login.html";
     }
 
+    // --- LOAD CURRENT VERIFICATION STATUS ---
+    async function loadCurrentStatus() {
+      try {
+        const res = await fetch(`${apiBase}/driver-verification/status/${encodeURIComponent(username)}`);
+        const data = await res.json();
+        const statusEl  = document.getElementById("verificationStatusBadge");
+        const descEl    = document.getElementById("statusDesc");
+        const formEl    = document.getElementById("verificationForm");
+        const rejBanner = document.getElementById("rejectionBanner");
+        const rejRem    = document.getElementById("rejectionRemarks");
+        const appBanner = document.getElementById("approvedBanner");
+        const pendBanner= document.getElementById("pendingBanner");
+
+        const status = data.status || "Not Started";
+
+        if (status === "Approved") {
+          statusEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Verified Driver';
+          statusEl.className = "status-badge approved";
+          descEl.textContent = "Your documents have been approved!";
+          if (formEl) formEl.style.display = "none";
+          if (appBanner) appBanner.style.display = "block";
+          if (pendBanner) pendBanner.style.display = "none";
+          if (rejBanner) rejBanner.style.display = "none";
+        } else if (status === "Pending") {
+          statusEl.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Under Review';
+          statusEl.className = "status-badge";
+          statusEl.style.background = "rgba(217,119,6,0.1)";
+          statusEl.style.borderColor = "rgba(217,119,6,0.2)";
+          statusEl.style.color = "#B45309";
+          descEl.textContent = "Documents submitted — awaiting admin review.";
+          if (formEl) formEl.style.display = "none";
+          if (pendBanner) pendBanner.style.display = "block";
+          if (appBanner) appBanner.style.display = "none";
+          if (rejBanner) rejBanner.style.display = "none";
+        } else if (status === "Rejected") {
+          statusEl.innerHTML = '<i class="fa-solid fa-xmark-circle"></i> Rejected — Resubmit';
+          statusEl.className = "status-badge";
+          statusEl.style.background = "rgba(225,29,72,0.1)";
+          statusEl.style.borderColor = "rgba(225,29,72,0.2)";
+          statusEl.style.color = "#BE123C";
+          descEl.textContent = "Your application was rejected. Please correct and resubmit.";
+          if (formEl) formEl.style.display = "block";
+          if (rejBanner) rejBanner.style.display = "block";
+          if (data.adminRemarks && rejRem) rejRem.textContent = data.adminRemarks;
+          if (appBanner) appBanner.style.display = "none";
+          if (pendBanner) pendBanner.style.display = "none";
+        } else {
+          // Not Started
+          statusEl.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> Not Submitted';
+          statusEl.className = "status-badge";
+          statusEl.style.background = "rgba(67,56,202,0.07)";
+          statusEl.style.borderColor = "rgba(67,56,202,0.18)";
+          statusEl.style.color = "var(--primary)";
+          descEl.textContent = "Submit your documents below to begin the verification process.";
+          if (formEl) formEl.style.display = "block";
+          if (appBanner) appBanner.style.display = "none";
+          if (pendBanner) pendBanner.style.display = "none";
+          if (rejBanner) rejBanner.style.display = "none";
+        }
+      } catch (e) {
+        console.warn("Could not load verification status:", e);
+      }
+    }
+
+    loadCurrentStatus();
+
     const form = document.getElementById("verificationForm");
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -453,9 +550,9 @@
     // --- UI/UX ENHANCEMENTS ---
 
     // Nav user details
-    const initials = (username || "Rahul K.").split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    const initials = username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
     document.getElementById("nav-avatar").textContent = initials;
-    document.getElementById("nav-user-name").textContent = username || "Rahul K.";
+    document.getElementById("nav-user-name").textContent = username;
 
     // File input label updater
     document.querySelectorAll('.file-input').forEach(input => {

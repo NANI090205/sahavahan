@@ -1,4 +1,4 @@
-const CACHE_NAME = "sahavahan-v1";
+const CACHE_NAME = "sahavahan-v4";
 
 const urlsToCache = [
   "/",

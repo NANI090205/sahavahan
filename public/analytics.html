@@ -9,7 +9,7 @@
   <meta name="description" content="SahaVahan — Smart carpooling platform analytics panel." />
   <link rel="apple-touch-icon" href="/images/logo.png" sizes="180x180">
   <link rel="apple-touch-icon" sizes="180x180" href="/public/logo.png">
-
+<link rel="icon" type="image/png" href="/images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght=600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
@@ -44,13 +44,17 @@
       --font-body: 'DM Sans', sans-serif;
     }
 
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      overflow-y: auto;
+    }
 
     body {
       font-family: var(--font-body);
       background: var(--bg-main);
       color: var(--text-main);
       overflow-x: hidden;
+      overflow-y: auto;
       line-height: 1.65;
       cursor: none;
     }
@@ -386,6 +390,9 @@
       <li><a href="rides.html"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
       <li><a href="dashboard.html"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
       <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+      <li><a href="profile.html"><i class="fa-solid fa-user-gear" style="font-size:11px;margin-right:5px;"></i>Profile</a></li>
+      <li><a href="admin.html"><i class="fa-solid fa-shield-halved" style="font-size:11px;margin-right:5px;"></i>Admin Panel</a></li>
+      <li><a href="analytics.html" class="active"><i class="fa-solid fa-chart-pie" style="font-size:11px;margin-right:5px;"></i>Analytics</a></li>
     </ul>
     <div class="nav-right">
       <div class="nav-user-pill">
@@ -419,27 +426,27 @@
     <div class="pulse-grid reveal visible">
       <div class="pulse-card">
         <div class="pulse-icon pi-blue"><i class="fa-solid fa-users"></i></div>
-        <div class="pulse-num">12.4K+</div>
+        <div class="pulse-num" id="totalUsersCount">0</div>
         <div class="pulse-label">Total Users</div>
-        <div class="pulse-delta">↑ 148 this week</div>
+        <div class="pulse-delta">Live DB Value</div>
       </div>
       <div class="pulse-card">
         <div class="pulse-icon pi-teal"><i class="fa-solid fa-car-side"></i></div>
-        <div class="pulse-num">3,248</div>
+        <div class="pulse-num" id="totalRidesCount">0</div>
         <div class="pulse-label">Total Rides</div>
-        <div class="pulse-delta">↑ 34 active now</div>
+        <div class="pulse-delta">Live DB Value</div>
       </div>
       <div class="pulse-card">
         <div class="pulse-icon pi-green"><i class="fa-solid fa-ticket"></i></div>
-        <div class="pulse-num">1,820</div>
+        <div class="pulse-num" id="totalBookingsCount">0</div>
         <div class="pulse-label">Total Bookings</div>
-        <div class="pulse-delta">↑ 92% completion</div>
+        <div class="pulse-delta">Live DB Value</div>
       </div>
       <div class="pulse-card">
         <div class="pulse-icon pi-amber"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-        <div class="pulse-num">₹18.4L</div>
+        <div class="pulse-num" id="totalRevenueCount">₹0</div>
         <div class="pulse-label">Total Revenue</div>
-        <div class="pulse-delta">↑ ₹42K today</div>
+        <div class="pulse-delta">Live DB Value</div>
       </div>
     </div>
 
@@ -518,9 +525,22 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    const role = localStorage.getItem("role");
+    if(role !== "admin"){
+      alert("Access Denied");
+      window.location.href = "index.html";
+    }
+
+    const adminUsername = localStorage.getItem("username");
+
     async function fetchAnalytics() {
       try {
-        const res = await fetch('/api/admin/analytics');
+        const token = localStorage.getItem("token");
+        const headers = {};
+        if (token) {
+          headers["Authorization"] = "Bearer " + token;
+        }
+        const res = await fetch('/api/admin/analytics', { headers });
         return await res.json();
       } catch (err) {
         console.error('Analytics fetch error:', err);
@@ -537,82 +557,198 @@
           datasets: [{
             label: 'Bookings',
             data: values,
-            borderColor: '#3374c9',
-            backgroundColor: 'rgba(51,116,201,0.2)',
+            borderColor: '#4338CA',
+            backgroundColor: 'rgba(67,56,202,0.06)',
             fill: true,
             tension: 0.35,
             pointRadius: 5,
-            pointBackgroundColor: '#1d4ed8'
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#4338CA',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
           }]
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { display: false }
           },
-          scales: {
-            y: {
-              beginAtZero: true
+          layout: {
+            padding: {
+              left: 10,
+              right: 15,
+              top: 10,
+              bottom: 10
             }
-          }
-        }
-      });
-    }
-
-    function renderRoutesChart() {
-      const ctx = document.getElementById('routesChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['Vijayawada-Hyd', 'Hyd-Bangalore', 'Vizag-Vijayawada'],
-          datasets: [{
-            label: 'Route Popularity',
-            data: [10, 8, 5],
-            backgroundColor: ['#3374c9', '#4f46e5', '#0ea5e9']
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: {
-              beginAtZero: true
-            }
-          }
-        }
-      });
-    }
-
-    function renderRevenueChart() {
-      const ctx = document.getElementById('revenueChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-          datasets: [{
-            label: 'Revenue',
-            data: [9000, 12000, 15000, 18000],
-            borderColor: '#22c55e',
-            backgroundColor: 'rgba(34,197,94,0.2)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 5,
-            pointBackgroundColor: '#16a34a'
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false }
           },
           scales: {
             y: {
               beginAtZero: true,
               ticks: {
-                callback: value => '₹' + value
+                precision: 0,
+                font: {
+                  family: "'DM Sans', sans-serif",
+                  size: 11
+                },
+                color: '#5C6B82'
+              },
+              grid: {
+                color: '#E2E8F0'
+              }
+            },
+            x: {
+              ticks: {
+                font: {
+                  family: "'DM Sans', sans-serif",
+                  size: 11
+                },
+                color: '#5C6B82'
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderRoutesChart(labels, values) {
+      const ctx = document.getElementById('routesChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Route Popularity',
+            data: values,
+            backgroundColor: ['#4338CA', '#4f46e5', '#0ea5e9', '#10b981', '#f59e0b']
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          layout: {
+            padding: {
+              left: 15,
+              right: 15,
+              top: 10,
+              bottom: 10
+            }
+          },
+          scales: {
+            y: {
+              afterFit: function(scale) {
+                const ctx = scale.ctx;
+                const origFont = ctx.font;
+                ctx.font = "500 11px 'DM Sans', sans-serif";
+                let maxLabelWidth = 0;
+                scale.ticks.forEach((t) => {
+                  const text = scale.getLabelForValue(t.value);
+                  const w = ctx.measureText(text).width;
+                  if (w > maxLabelWidth) {
+                    maxLabelWidth = w;
+                  }
+                });
+                ctx.font = origFont;
+                scale.width = Math.ceil(maxLabelWidth) + 12;
+              },
+              ticks: {
+                autoSkip: false,
+                font: {
+                  family: "'DM Sans', sans-serif",
+                  size: 11,
+                  weight: '500'
+                },
+                color: '#5C6B82'
+              },
+              grid: {
+                display: false
+              }
+            },
+            x: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0,
+                font: {
+                  family: "'DM Sans', sans-serif",
+                  size: 11
+                },
+                color: '#5C6B82'
+              },
+              grid: {
+                color: '#E2E8F0'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderRevenueChart(labels, values) {
+      const ctx = document.getElementById('revenueChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Revenue',
+            data: values,
+            borderColor: '#10B981',
+            backgroundColor: 'rgba(16,185,129,0.06)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#10B981',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          layout: {
+            padding: {
+              left: 10,
+              right: 15,
+              top: 10,
+              bottom: 10
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: value => '₹' + value,
+                font: {
+                  family: "'DM Sans', sans-serif",
+                  size: 11
+                },
+                color: '#5C6B82'
+              },
+              grid: {
+                color: '#E2E8F0'
+              }
+            },
+            x: {
+              ticks: {
+                font: {
+                  family: "'DM Sans', sans-serif",
+                  size: 11
+                },
+                color: '#5C6B82'
+              },
+              grid: {
+                display: false
               }
             }
           }
@@ -621,16 +757,45 @@
     }
 
     async function initAnalytics() {
-      const monthlyData = await fetchAnalytics();
-      const labels = Object.keys(monthlyData);
-      const values = Object.values(monthlyData);
-      if (labels.length && values.length) {
-        renderBookingsChart(labels, values);
-      } else {
-        renderBookingsChart(['Jan', 'Feb', 'Mar', 'Apr'], [5, 10, 15, 20]);
+      const data = await fetchAnalytics();
+
+      // Update upper cards counts
+      if (data.stats) {
+        document.getElementById("totalUsersCount").innerText = data.stats.users + "+";
+        document.getElementById("totalRidesCount").innerText = data.stats.rides;
+        document.getElementById("totalBookingsCount").innerText = data.stats.bookings;
+        document.getElementById("totalRevenueCount").innerText = "₹" + data.stats.revenue;
       }
-      renderRoutesChart();
-      renderRevenueChart();
+
+      // Bookings Chart
+      const bookingsData = data.monthlyBookings || {};
+      const bookingsLabels = Object.keys(bookingsData);
+      const bookingsValues = Object.values(bookingsData);
+      renderBookingsChart(bookingsLabels, bookingsValues);
+
+      // Routes Chart
+      const routesData = data.popularRoutes || [];
+      const routesLabels = routesData.map(item => {
+        // Shorten long route names by splitting on separator (either arrow symbol or dash arrow)
+        const separator = item.route.includes('→') ? '→' : (item.route.includes('->') ? '->' : null);
+        if (separator) {
+          const parts = item.route.split(separator);
+          if (parts.length === 2) {
+            const src = parts[0].split(',')[0].trim();
+            const dest = parts[1].split(',')[0].trim();
+            return `${src} → ${dest}`;
+          }
+        }
+        return item.route;
+      });
+      const routesValues = routesData.map(item => item.count);
+      renderRoutesChart(routesLabels, routesValues);
+
+      // Revenue Chart
+      const revenueData = data.monthlyRevenue || {};
+      const revenueLabels = Object.keys(revenueData);
+      const revenueValues = Object.values(revenueData);
+      renderRevenueChart(revenueLabels, revenueValues);
     }
 
     initAnalytics();
@@ -639,10 +804,13 @@
   <script src="notification-badge.js"></script>
   <script>
     // Hydrate Profile / Auth Infrastructure
-    const username = localStorage.getItem("username") || "Rahul K.";
-    const initials = username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    const username = localStorage.getItem("username");
+    if (!username) {
+      window.location.href = "login.html";
+    }
+    const initials = username ? username.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) : "";
     document.getElementById("nav-avatar").textContent = initials;
-    document.getElementById("nav-user-name").textContent = username;
+    document.getElementById("nav-user-name").textContent = username || "";
 
     function logout(){localStorage.clear();window.location.href="login.html";}
 

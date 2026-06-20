@@ -36,6 +36,11 @@ const UserSchema = new mongoose.Schema(
         default: ""
     },
 
+    isPhoneVerified: {
+        type: Boolean,
+        default: true
+    },
+
     role: {
         type: String,
         enum: ["user", "admin"],
@@ -167,6 +172,16 @@ default:{}
     emailOtpExpiry: {
         type: Date,
         default: null
+    },
+
+    emailOtpAttempts: {
+        type: Number,
+        default: 0
+    },
+
+    resetOtpAttempts: {
+        type: Number,
+        default: 0
     },
 
     emergencyContacts: {

@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    window.alert = function(msg) { console.log("ALERT:", msg); };
+    window.confirm = function(msg) { console.log("CONFIRM:", msg); return true; };
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard — SahaVahan</title>
@@ -8,12 +12,13 @@
   <meta name="theme-color" content="#4338CA">
   <meta name="description" content="User dashboard for SahaVahan: profile completion, ride history, waitlist, route alerts, trust score, and notifications." />
   <meta name="robots" content="index,follow" />
-
+<link rel="icon" type="image/png" href="/images/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -703,6 +708,24 @@
       display: flex; align-items: flex-end; justify-content: space-between;
       flex-wrap: wrap; gap: 14px; margin-bottom: 6px;
     }
+    /* Live location tracking badge style */
+    @keyframes pulseWhite {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+      }
+    }
+    .tracking-pulse-dot {
+      animation: pulseWhite 1.5s infinite;
+    }
   </style>
 </head>
 <body>
@@ -729,6 +752,8 @@
       <li><a href="rides.html"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;margin-right:5px;"></i>Find Ride</a></li>
       <li><a href="dashboard.html" class="active"><i class="fa-solid fa-chart-line" style="font-size:11px;margin-right:5px;"></i>Dashboard</a></li>
       <li><a href="leaderboard.html"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>Leaderboard</a></li>
+      <li><a href="profile.html"><i class="fa-solid fa-user-gear" style="font-size:11px;margin-right:5px;"></i>Profile</a></li>
+      <li><a href="admin.html" id="navAdminLink" style="display:none;"><i class="fa-solid fa-shield-halved" style="font-size:11px;margin-right:5px;"></i>Admin Panel</a></li>
     </ul>
     <div class="nav-right">
       <button id="aiHeaderButton" type="button"
@@ -1001,6 +1026,9 @@
             <i class="fa-solid fa-plus"></i> Add New Ride
           </a>
         </div>
+        <!-- Live Geolocation Tracking Status Banner -->
+        <div id="liveTrackingStatusContainer" style="display:none; margin-bottom: 20px;"></div>
+
         <div id="publishedRidesContainer" class="reveal">
           <div class="loader-pill"><div class="loader-dot"></div> Loading published rides…</div>
         </div>
@@ -1171,6 +1199,87 @@
     const userName  = localStorage.getItem("username");
     const userCode  = localStorage.getItem("uniqueCode");
 
+    // Real-time Driver Tracking State
+    let activeWatcherId = null;
+    let activeSocket = null;
+    let activeTrackingRideId = null;
+
+    function initiateDriverTracking(rideId) {
+      if (activeTrackingRideId === rideId) return; // Already tracking this ride
+      
+      // Stop previous tracking if any
+      stopDriverTracking();
+      
+      activeTrackingRideId = rideId;
+      console.log(`[Tracking] Starting live location tracking for ride ${rideId}`);
+      
+      const statusContainer = document.getElementById('liveTrackingStatusContainer');
+      if (statusContainer) {
+        statusContainer.style.display = 'block';
+        statusContainer.innerHTML = `
+          <div class="card live-tracking-card" style="background: linear-gradient(135deg, #059669 0%, #10B981 100%); color: white; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(5, 150, 105, 0.2); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div class="tracking-pulse-dot" style="width: 12px; height: 12px; background: white; border-radius: 50%; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);"></div>
+              <div>
+                <h3 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 4px;">Live Location Sharing Active</h3>
+                <p style="font-size: 13.5px; opacity: 0.9;">Streaming your coordinates to passengers in real-time. Keep this page open while driving.</p>
+              </div>
+            </div>
+            <div style="font-size: 12px; background: rgba(255, 255, 255, 0.2); padding: 6px 12px; border-radius: 100px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+              Active Ride: ${rideId}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Establish Socket connection if not active
+      try {
+        activeSocket = io();
+        activeSocket.emit('driverJoinRide', { rideId });
+        
+        // Watch driver geolocation
+        if ("geolocation" in navigator) {
+          activeWatcherId = navigator.geolocation.watchPosition(
+            (position) => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              console.log(`[Tracking] Location updated: lat=${lat}, lng=${lng}`);
+              if (activeSocket) {
+                activeSocket.emit('driverLocation', { rideId, lat, lng });
+              }
+            },
+            (error) => {
+              console.error('[Tracking] Geolocation watcher error:', error);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        } else {
+          console.warn("[Tracking] Geolocation is not supported by this browser.");
+        }
+      } catch (err) {
+        console.error('[Tracking] Failed to initialize Socket.IO connection:', err);
+      }
+    }
+
+    function stopDriverTracking() {
+      if (activeWatcherId !== null) {
+        navigator.geolocation.clearWatch(activeWatcherId);
+        activeWatcherId = null;
+      }
+      if (activeSocket) {
+        activeSocket.disconnect();
+        activeSocket = null;
+      }
+      activeTrackingRideId = null;
+      
+      const statusContainer = document.getElementById('liveTrackingStatusContainer');
+      if (statusContainer) {
+        statusContainer.style.display = 'none';
+        statusContainer.innerHTML = '';
+      }
+      console.log('[Tracking] Live location tracking stopped');
+    }
+
     if (!userName || !userCode) {
       alert("Session expired! Please login again.");
       window.location.href = "login.html";
@@ -1181,7 +1290,11 @@
     document.getElementById("nav-user-name").textContent    = userName;
     document.getElementById("userNameDisplay").textContent  = userName;
     document.getElementById("userCodeDisplay").textContent  = userCode;
-    if(localStorage.getItem("role")==="admin") document.getElementById("adminBtn").style.display="block";
+    if(localStorage.getItem("role")==="admin") {
+      document.getElementById("adminBtn").style.display="block";
+      const navAdminLink = document.getElementById("navAdminLink");
+      if(navAdminLink) navAdminLink.style.display="inline-block";
+    }
 
     function logoutUser(){ localStorage.clear(); window.location.href = "login.html"; }
 
@@ -1292,6 +1405,13 @@
 
       } else {
         actionsHtml = `<button class="btn-ghost btn-sm ripple-host" onclick="openRoute('${source}','${dest}')"><i class="fa-solid fa-map-location-dot"></i> View Route</button>`;
+        if (status === 'In Progress') {
+          actionsHtml += `
+            <a href="trackRide.html?rideId=${r.rideId || r._id || ''}&bookingId=${r._id || ''}" class="btn-primary btn-sm ripple-host" style="background:var(--accent);color:white;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-location-crosshairs"></i> Track Live
+            </a>
+          `;
+        }
       }
 
 
@@ -1324,7 +1444,7 @@
               <button class="btn-success btn-sm" onclick="openReviewModal('${r?.rideId || r?._id || ''}','${r?.publishedBy || ''}')">
                 ⭐ Leave Review
               </button>
-            ` : ''
+            ` : ''}
             <button class="btn-ghost btn-sm ripple-host" onclick="openRoute('${source}','${dest}')"><i class="fa-solid fa-location-dot"></i> Google Maps</button>
           </div>
         </div>
@@ -1364,7 +1484,12 @@
 
       try {
         const bookingRes = await fetch(
-          `/api/otp/booking-info/${rideId}`
+          `/api/otp/booking-info/${rideId}`,
+          {
+            headers: {
+              "Authorization": "Bearer " + localStorage.getItem("token")
+            }
+          }
         );
 
         const bookingData = await bookingRes.json();
@@ -1389,7 +1514,8 @@
           {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + localStorage.getItem("token")
             },
             body: JSON.stringify({
               rideId,
@@ -1607,12 +1733,25 @@
 
         document.getElementById('publishedCount').textContent = Array.isArray(rides) ? rides.length : 0;
 
-        if(!rides||!rides.length){ container.innerHTML=emptyState('car-side','No rides published yet.'); return; }
+        if(!rides||!rides.length){
+          container.innerHTML=emptyState('car-side','No rides published yet.');
+          stopDriverTracking();
+          return;
+        }
         container.innerHTML = `<div class="rides-grid">${rides.map(r=>makeRideCard(r,'driver')).join('')}</div>`;
+
+        // Check for active "In Progress" ride to start location tracking
+        const activeRideInProgress = rides.find(r => r.status === 'In Progress');
+        if (activeRideInProgress) {
+          initiateDriverTracking(activeRideInProgress._id);
+        } else {
+          stopDriverTracking();
+        }
 
       }catch(e){
         console.error(e);
         container.innerHTML=`<div class="rides-grid">${emptyState('exclamation-circle','Failed to load published rides.')}</div>`;
+        stopDriverTracking();
       }
     }
 
@@ -1752,7 +1891,11 @@
       if (!rideId) return;
 
       try {
-        const bookingRes = await fetch(`/api/otp/booking-info/${rideId}`);
+        const bookingRes = await fetch(`/api/otp/booking-info/${rideId}`, {
+          headers: {
+            "Authorization": "Bearer " + localStorage.getItem("token")
+          }
+        });
         const bookingData = await bookingRes.json();
 
         const bookings = bookingData?.bookings || [];
@@ -1792,7 +1935,8 @@
         const verifyRes = await fetch("/api/otp/verify-drop", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
           },
           body: JSON.stringify({
             rideId,
@@ -1822,10 +1966,65 @@
     async function loadHistory(){
       const container = document.getElementById('historyContainer');
       container.innerHTML='<div class="loader-pill"><div class="loader-dot"></div> Loading ride history…</div>';
-      // Stub — extend when history API is available
-      setTimeout(()=>{
-        container.innerHTML=emptyState('clock-rotate-left','Your ride history will appear here.');
-      }, 800);
+      try {
+        const res = await fetch(`/api/dashboard/history/${encodeURIComponent(userName)}`);
+        const history = await res.json();
+        if(!history || !history.length) {
+          container.innerHTML = emptyState('clock-rotate-left', 'No ride history found.');
+          return;
+        }
+
+        let rowsHtml = '';
+        history.forEach(item => {
+          const typeLabel = item.type || 'Completed';
+          let badgeClass = 'status-scheduled'; 
+          if (typeLabel === 'Completed') badgeClass = 'status-completed';
+          if (typeLabel === 'Cancelled') badgeClass = 'status-cancelled';
+          if (typeLabel === 'Published') badgeClass = 'status-ongoing'; 
+
+          const sourceShort = shortPlace(item.source);
+          const destShort = shortPlace(item.destination);
+
+          const dateStr = item.date || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—');
+          const amountStr = item.amount != null ? `₹${item.amount}` : '—';
+
+          rowsHtml += `
+            <tr>
+              <td>
+                <div style="font-weight:600;color:var(--text-main);display:flex;align-items:center;gap:6px;">
+                  <span>📍 ${sourceShort}</span>
+                  <span style="color:var(--text-muted);">➔</span>
+                  <span>🏁 ${destShort}</span>
+                </div>
+              </td>
+              <td><span class="status-badge ${badgeClass}">${typeLabel}</span></td>
+              <td>${dateStr}</td>
+              <td style="font-weight:700;color:var(--primary);">${amountStr}</td>
+            </tr>
+          `;
+        });
+
+        container.innerHTML = `
+          <div class="history-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Route</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch(e) {
+        console.error("loadHistory error:", e);
+        container.innerHTML = emptyState('exclamation-circle', 'Failed to load ride history.');
+      }
     }
 
     // ══ NOTIFICATIONS ══
@@ -1971,6 +2170,35 @@
       addAiMessage('Ask me about available rides, routes, and seat availability.','assistant');
     }
 
+    async function loadAnalyticsAndStats(){
+      try {
+        if (!userCode || !userName) return;
+
+        // Fetch stats (totalPublished, totalBooked, totalEarnings, totalSpent)
+        const statsRes = await fetch(`/api/dashboard/stats/${userCode}`);
+        if(statsRes.ok){
+          const stats = await statsRes.json();
+          const spentEl = document.getElementById('spent');
+          if (spentEl) spentEl.textContent = `₹${stats.totalSpent || 0}`;
+        }
+        
+        // Fetch completed ride earnings (today, thisMonth, lifetime)
+        const earningsRes = await fetch(`/api/dashboard/earnings/${encodeURIComponent(userName)}`);
+        if(earningsRes.ok){
+          const earnings = await earningsRes.json();
+          const todayEl = document.getElementById('earningsToday');
+          const monthEl = document.getElementById('earningsThisMonth');
+          const lifeEl = document.getElementById('earningsLifetime');
+          
+          if(todayEl) todayEl.textContent = `₹${earnings.today || 0}`;
+          if(monthEl) monthEl.textContent = `₹${earnings.thisMonth || 0}`;
+          if(lifeEl) lifeEl.textContent = `₹${earnings.lifetime || 0}`;
+        }
+      } catch(e) {
+        console.error("Error loading analytics:", e);
+      }
+    }
+
     // ══ INIT ALL LOADERS ══
     loadTrustScore();
     loadWaitlistedRides();
@@ -1983,6 +2211,7 @@
     loadDropOtp();
     loadHistory();
     loadRouteAlerts();
+    loadAnalyticsAndStats();
 
     // ══ AI HEADER BUTTON - PREVENT NAV ══
     document.addEventListener('DOMContentLoaded',()=>{

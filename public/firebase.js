@@ -45,8 +45,6 @@ async function registerForFcmAndSaveToken() {
   try {
     const username = localStorage.getItem("username");
     if (!username) return;
-    const username = localStorage.getItem("username");
-    if (!username) return;
 
     if (!("Notification" in window)) return;
     if (!("serviceWorker" in navigator)) return;

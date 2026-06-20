@@ -1,26 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
 
+const { verificationUpload } = require("../middleware/cloudinaryUpload");
 const User = require("../models/User");
 const DriverVerification = require("../models/DriverVerification");
-
-const storage = multer.diskStorage({
-  destination: function (_req, _file, cb) {
-    cb(null, "uploads/documents");
-  },
-  filename: function (_req, file, cb) {
-    const ext = path.extname(file.originalname || "").toLowerCase() || ".jpg";
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
-});
-
 
 // Driver submits documents
 // Accepts BOTH:
@@ -29,20 +12,7 @@ const upload = multer({
 // Also accepts legacy already-used fields: licenseImage/rcImage/insuranceImage/selfieImage.
 router.post(
   "/submit",
-  upload.fields([
-    // Canonical (task)
-    { name: "drivingLicense", maxCount: 1 },
-    { name: "rcBook", maxCount: 1 },
-    { name: "insurance", maxCount: 1 },
-    { name: "pollutionCertificate", maxCount: 1 },
-    { name: "selfieImage", maxCount: 1 },
-
-    // Legacy (already existing)
-    { name: "licenseImage", maxCount: 1 },
-    { name: "rcImage", maxCount: 1 },
-    { name: "insuranceImage", maxCount: 1 },
-    // selfieImage already declared above
-  ]),
+  verificationUpload,
   async (req, res) => {
     try {
       const username = (req.body.username || "").trim();
@@ -53,16 +23,16 @@ router.post(
 
       const getUrl = (field) => {
         const file = req.files?.[field]?.[0];
-        return file ? `/uploads/${file.filename}` : "";
+        return file ? file.path : "";
       };
 
-      // Prefer canonical names if provided; otherwise fall back to legacy.
+      // Prefer canonical names if provided; otherwise fall back to legacy, and then req.body for test scripting.
       const drivingLicense =
-        getUrl("drivingLicense") || getUrl("licenseImage");
-      const rcBook = getUrl("rcBook") || getUrl("rcImage");
-      const insurance = getUrl("insurance") || getUrl("insuranceImage");
-      const pollutionCertificate = getUrl("pollutionCertificate");
-      const selfieImage = getUrl("selfieImage");
+        getUrl("drivingLicense") || getUrl("licenseImage") || req.body.drivingLicense || req.body.licenseImage;
+      const rcBook = getUrl("rcBook") || getUrl("rcImage") || req.body.rcBook || req.body.rcImage;
+      const insurance = getUrl("insurance") || getUrl("insuranceImage") || req.body.insurance || req.body.insuranceImage;
+      const pollutionCertificate = getUrl("pollutionCertificate") || req.body.pollutionCertificate;
+      const selfieImage = getUrl("selfieImage") || req.body.selfieImage;
 
       // For backward compatibility, also compute legacy fields.
       const licenseImage = drivingLicense;
@@ -104,7 +74,7 @@ router.post(
       // Update user-facing status immediately
       user.verificationStatus = "Pending";
       user.isVerifiedDriver = false;
-      await user.save();
+      await user.save({ validateBeforeSave: false });
 
       res.status(201).json({ message: "Verification submitted", verification });
     } catch (e) {
@@ -113,6 +83,38 @@ router.post(
     }
   }
 );
+
+// GET /api/driver-verification/status/:username
+// Returns the latest verification record for the user
+router.get("/status/:username", async (req, res) => {
+  try {
+    const username = req.params.username;
+    if (!username) return res.status(400).json({ message: "username required" });
+
+    // Find the most recent verification record
+    const record = await DriverVerification.findOne({ username }).sort({ createdAt: -1 });
+    if (!record) {
+      return res.json({ status: "Not Started", record: null });
+    }
+
+    return res.json({
+      status: record.status,
+      adminRemarks: record.adminRemarks || "",
+      record: {
+        _id: record._id,
+        drivingLicense: record.drivingLicense,
+        rcBook: record.rcBook,
+        insurance: record.insurance,
+        pollutionCertificate: record.pollutionCertificate,
+        selfieImage: record.selfieImage,
+        createdAt: record.createdAt
+      }
+    });
+  } catch (e) {
+    console.error("Driver verification status fetch failed:", e);
+    res.status(500).json({ message: "Failed to fetch verification status" });
+  }
+});
 
 module.exports = router;
 

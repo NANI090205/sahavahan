@@ -37,7 +37,7 @@ require("./utils/rideScheduler");
 require("./utils/rideStatusUpdater");
 
 
-const rideRoutes = require("./routes/rides.fixed");
+const rideRoutes = require("./routes/rides");
 const passengerBookingsRoutes = require("./routes/passengerBookings");
 
 
@@ -76,20 +76,23 @@ app.use("/api/leaderboard", leaderboardRoutes);
 
 
 // Middleware
+const helmet = require("helmet");
+const compression = require("compression");
 
-
-
-
-
+app.use(helmet({
+  contentSecurityPolicy: false // Disable Content Security Policy to support Leaflet maps and external CDN assets
+}));
+app.use(compression());
 app.use(cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
-// Serve uploaded files
-app.use("/uploads", express.static("uploads"));
+// Serve uploaded files (disabled local storage, now on Cloudinary)
+
 
 // Profile routes
 const profileRoutes = require("./routes/profile");
@@ -102,6 +105,7 @@ app.use("/api/driver-verification", driverVerificationRoutes);
 // Waitlist routes
 const waitlistRoutes = require("./routes/waitlist");
 app.use("/api/waitlist", waitlistRoutes);
+
 
 
 // API Routes
@@ -237,5 +241,7 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+module.exports = app;
 
 

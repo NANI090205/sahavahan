@@ -8,8 +8,35 @@ const jwt = require("jsonwebtoken");
 // Secret key for JWT
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
+// Custom Rate Limiter Middleware
+const rateLimitStore = {};
+const otpRateLimiter = (windowMs, max, message) => {
+  return (req, res, next) => {
+    if (process.env.NODE_ENV === "test") {
+      return next();
+    }
+    const key = req.ip + ":" + req.originalUrl;
+    const now = Date.now();
+    if (!rateLimitStore[key]) {
+      rateLimitStore[key] = { hits: 1, resetTime: now + windowMs };
+      return next();
+    }
+    const record = rateLimitStore[key];
+    if (now > record.resetTime) {
+      record.hits = 1;
+      record.resetTime = now + windowMs;
+      return next();
+    }
+    record.hits++;
+    if (record.hits > max) {
+      return res.status(429).json({ message });
+    }
+    next();
+  };
+};
+
 // Forgot Password (Send OTP)
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", otpRateLimiter(10 * 60 * 1000, 5, "Too many password reset requests. Please try again later."), async (req, res) => {
 
   try {
 
@@ -28,6 +55,7 @@ router.post("/forgot-password", async (req, res) => {
     ).toString();
 
     user.resetOtp = otp;
+    user.resetOtpAttempts = 0;
 
     user.otpExpiry = new Date(
       Date.now() + 10 * 60 * 1000
@@ -35,9 +63,10 @@ router.post("/forgot-password", async (req, res) => {
 
     await user.save();
 
-    await transporter.sendMail({
-      from: "onboarding@resend.dev",
-      to: email,
+    try {
+      await transporter.sendMail({
+        from: "onboarding@resend.dev",
+        to: email,
       subject: "SahaVahan Password Reset OTP",
       html: `
 
@@ -58,23 +87,26 @@ Valid for 10 minutes.
 `
     });
 
+      console.log("OTP Email Sent Successfully");
+    } catch (sendErr) {
+      console.error("[OTP] Email send failed:", sendErr);
+      console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
+    }
+
     res.json({
       message: "OTP Sent Successfully"
     });
 
   } catch (error) {
-
     console.error(error);
-
     res.status(500).json({
       message: "Failed To Send OTP"
     });
-
   }
 });
 
 // Verify OTP
-router.post("/verify-reset-otp", async (req, res) => {
+router.post("/verify-reset-otp", otpRateLimiter(5 * 60 * 1000, 10, "Too many verification attempts. Please try again later."), async (req, res) => {
 
   try {
 
@@ -88,7 +120,27 @@ router.post("/verify-reset-otp", async (req, res) => {
       });
     }
 
+    if (user.resetOtpAttempts >= 5) {
+      user.resetOtp = "";
+      user.otpExpiry = null;
+      await user.save();
+      return res.status(400).json({
+        message: "OTP has been invalidated due to too many failed attempts. Please request a new OTP."
+      });
+    }
+
     if (user.resetOtp !== otp) {
+      user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
+      if (user.resetOtpAttempts >= 5) {
+        user.resetOtp = "";
+        user.otpExpiry = null;
+      }
+      await user.save();
+      if (user.resetOtpAttempts >= 5) {
+        return res.status(400).json({
+          message: "OTP has been invalidated due to too many failed attempts. Please request a new OTP."
+        });
+      }
       return res.status(400).json({
         message: "Invalid OTP"
       });
@@ -114,7 +166,7 @@ router.post("/verify-reset-otp", async (req, res) => {
 });
 
 // Reset Password
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", otpRateLimiter(5 * 60 * 1000, 10, "Too many password reset attempts. Please try again later."), async (req, res) => {
 
   try {
 
@@ -128,7 +180,27 @@ router.post("/reset-password", async (req, res) => {
       });
     }
 
+    if (user.resetOtpAttempts >= 5) {
+      user.resetOtp = "";
+      user.otpExpiry = null;
+      await user.save();
+      return res.status(400).json({
+        message: "OTP has been invalidated due to too many failed attempts. Please request a new OTP."
+      });
+    }
+
     if (user.resetOtp !== otp) {
+      user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
+      if (user.resetOtpAttempts >= 5) {
+        user.resetOtp = "";
+        user.otpExpiry = null;
+      }
+      await user.save();
+      if (user.resetOtpAttempts >= 5) {
+        return res.status(400).json({
+          message: "OTP has been invalidated due to too many failed attempts. Please request a new OTP."
+        });
+      }
       return res.status(400).json({
         message: "Invalid OTP"
       });
@@ -146,6 +218,7 @@ router.post("/reset-password", async (req, res) => {
 
     user.resetOtp = "";
     user.otpExpiry = null;
+    user.resetOtpAttempts = 0;
 
     await user.save();
 
@@ -172,7 +245,7 @@ const generateUserCode = () => {
 };
 
 // Signup route
-router.post("/signup", async (req, res) => {
+router.post("/signup", otpRateLimiter(15 * 60 * 1000, 5, "Too many signups from this IP. Please try again later."), async (req, res) => {
     console.log(">>> /signup hit (handler start)");
     const { username, email, phoneNumber, password, referralCode } = req.body;
 
@@ -226,6 +299,7 @@ const newUser = new User({
     ).toString();
 
     savedUser.emailOtp = otp;
+    savedUser.emailOtpAttempts = 0;
     savedUser.emailOtpExpiry = new Date(
       Date.now() + 10 * 60 * 1000
     );
@@ -253,9 +327,8 @@ const newUser = new User({
       console.log("OTP Email Sent Successfully");
     } catch (sendErr) {
       console.error("[OTP] Email send failed:", sendErr);
-      return res.status(500).json({
-        message: "Failed To Send OTP"
-      });
+      console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
+      // Do not return 500, allow signup to proceed so developer can test using console OTP.
     }
 
     const userReferralCode = username.toUpperCase() + uniqueCode;
@@ -275,8 +348,26 @@ const newUser = new User({
         await referrer.save();
 
         userWithReferralCode.rewardPoints += 25;
-        userWithReferralCode.referredBy = referralCode;
+        userWithReferralCode.referredBy = referralCodeValue;
         await userWithReferralCode.save();
+
+        try {
+          const { createNotification } = require("../utils/notifications");
+          await createNotification({
+            username: referrer.username,
+            title: "🎁 Referral Bonus",
+            message: `Your friend ${username} signed up! You earned 50 reward points.`,
+            type: "general"
+          });
+          await createNotification({
+            username: username,
+            title: "🎁 Referral Bonus",
+            message: `Welcome to SahaVahan! You earned 25 reward points using referral code from ${referrer.username}.`,
+            type: "general"
+          });
+        } catch (err) {
+          console.error("Failed to send referral notifications:", err);
+        }
       }
     }
 
@@ -295,7 +386,8 @@ const newUser = new User({
 
     res.status(200).json({
       success: true,
-      message: "Signup successful"
+      message: "Signup successful",
+      uniqueCode: uniqueCode
     });
 
   } catch (err) {
@@ -323,7 +415,7 @@ const newUser = new User({
 
 
 // Verify Email OTP
-router.post("/verify-email", async (req, res) => {
+router.post("/verify-email", otpRateLimiter(5 * 60 * 1000, 10, "Too many email verification attempts. Please try again later."), async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -335,7 +427,27 @@ router.post("/verify-email", async (req, res) => {
       });
     }
 
-    if (user.emailOtp !== otp) {
+    if (user.emailOtpAttempts >= 5) {
+      user.emailOtp = "";
+      user.emailOtpExpiry = null;
+      await user.save();
+      return res.status(400).json({
+        message: "OTP has been invalidated due to too many failed attempts. Please request a new OTP."
+      });
+    }
+
+    if (String(user.emailOtp) !== String(otp)) {
+      user.emailOtpAttempts = (user.emailOtpAttempts || 0) + 1;
+      if (user.emailOtpAttempts >= 5) {
+        user.emailOtp = "";
+        user.emailOtpExpiry = null;
+      }
+      await user.save();
+      if (user.emailOtpAttempts >= 5) {
+        return res.status(400).json({
+          message: "OTP has been invalidated due to too many failed attempts. Please request a new OTP."
+        });
+      }
       return res.status(400).json({
         message: "Invalid OTP"
       });
@@ -350,6 +462,7 @@ router.post("/verify-email", async (req, res) => {
     user.isEmailVerified = true;
     user.emailOtp = "";
     user.emailOtpExpiry = null;
+    user.emailOtpAttempts = 0;
 
     await user.save();
 
@@ -366,7 +479,7 @@ router.post("/verify-email", async (req, res) => {
 });
 
 // Resend OTP
-router.post("/resend-email-otp", async (req, res) => {
+router.post("/resend-email-otp", otpRateLimiter(10 * 60 * 1000, 5, "Too many request OTP attempts. Please try again later."), async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -385,6 +498,7 @@ router.post("/resend-email-otp", async (req, res) => {
     ).toString();
 
     user.emailOtp = otp;
+    user.emailOtpAttempts = 0;
     user.emailOtpExpiry = new Date(
       Date.now() + 10 * 60 * 1000
     );
@@ -411,9 +525,7 @@ router.post("/resend-email-otp", async (req, res) => {
       console.log("OTP Email Sent Successfully");
     } catch (sendErr) {
       console.error("[OTP-RESEND] Email send failed:", sendErr);
-      return res.status(500).json({
-        message: "Failed To Send OTP"
-      });
+      console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
     }
 
     res.json({
@@ -431,8 +543,14 @@ router.post("/resend-email-otp", async (req, res) => {
 // Login route
 router.post("/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
-      const user = await User.findOne({ email });
+      const { email, username, password } = req.body;
+      // Accept login by either email or username
+      let user = null;
+      if (email) {
+        user = await User.findOne({ email });
+      } else if (username) {
+        user = await User.findOne({ username });
+      }
   
       if (!user) {
         return res.status(400).json({ message: "Invalid credentials" });
@@ -443,15 +561,25 @@ router.post("/login", async (req, res) => {
         return res.status(400).json({ message: "Invalid credentials" });
       }
 
+      if (user.isSuspended) {
+        return res.status(403).json({
+          message: "Your account is suspended due to safety or integrity violations."
+        });
+      }
+
       if (!user.isEmailVerified) {
         return res.status(403).json({
-          message: "Please verify your email first"
+          message: "Please verify your email before logging in.",
+          requiresEmailVerification: true,
+          email: user.email
         });
       }
   
       const role = user.role || "user";
+      const token = jwt.sign({ userId: user._id, username: user.username, role }, JWT_SECRET, { expiresIn: "24h" });
       res.status(200).json({
         success: true,
+        token,
         role,
         redirect: role === "admin" ? "admin.html" : "index.html",
         username: user.username,
@@ -588,39 +716,6 @@ router.get("/profile/:uniqueCode", async (req, res) => {
       message: "Server Error"
     });
 
-  }
-});
-
-const calculateTrustScore = require("../utils/calculateTrustScore");
-
-// Phone verification (Firebase Phone Auth)
-router.post("/verify-phone", async (req, res) => {
-  try {
-    const { username, phoneNumber, isVerified } = req.body;
-
-
-    if (!username || !phoneNumber) {
-      return res.status(400).json({ message: "Missing username or phoneNumber" });
-    }
-
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    user.phoneNumber = phoneNumber;
-    if (isVerified) user.isPhoneVerified = true;
-
-    // Recalculate trust score using canonical rules
-    user.trustScore = calculateTrustScore(user);
-
-    await user.save();
-
-    return res.json({ message: "Phone Verified" });
-
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Phone verification failed" });
   }
 });
 

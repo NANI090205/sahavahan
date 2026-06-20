@@ -5,6 +5,12 @@ const User = require("../models/User");
 const Ride = require("../models/Ride");
 const BookedRide = require("../models/BookedRide");
 const Review = require("../models/Review");
+const Report = require("../models/Report");
+
+
+const adminAuthMiddleware = require("../middleware/adminAuth");
+
+router.use(adminAuthMiddleware);
 
 // Dashboard Stats
 router.get("/stats", async (req, res) => {
@@ -214,42 +220,69 @@ router.get("/fraud-users", async (req, res) => {
 });
 
 router.get("/analytics", async (req, res) => {
-
   try {
+    const usersCount = await User.countDocuments();
+    const ridesCount = await Ride.countDocuments();
+    const bookingsCount = await BookedRide.countDocuments();
 
-    const bookings =
-      await BookedRide.find();
+    const allBookings = await BookedRide.find().sort({ createdAt: 1 });
+    let revenueSum = 0;
+    const monthlyBookings = {};
+    const monthlyRevenue = {};
 
-    const monthlyData = {};
+    allBookings.forEach((b) => {
+      const price = b.totalPrice || 0;
+      revenueSum += price;
 
-    bookings.forEach((booking) => {
-
-      const month =
-        new Date(
-          booking.createdAt
-        ).toLocaleString(
-          "default",
-          {
-            month: "short"
-          }
-        );
-
-      monthlyData[month] =
-        (monthlyData[month] || 0) + 1;
-
+      const month = new Date(b.createdAt).toLocaleString("default", { month: "short" });
+      monthlyBookings[month] = (monthlyBookings[month] || 0) + 1;
+      monthlyRevenue[month] = (monthlyRevenue[month] || 0) + price;
     });
 
-    res.json(monthlyData);
+    // Aggregate routes for popularity
+    const routesAgg = await BookedRide.aggregate([
+      {
+        $group: {
+          _id: { source: "$source", destination: "$destination" },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+    const popularRoutes = routesAgg.map(item => ({
+      route: `${item._id.source} → ${item._id.destination}`,
+      count: item.count
+    }));
 
+    // Fallbacks to avoid Chart.js render errors
+    if (Object.keys(monthlyBookings).length === 0) {
+      monthlyBookings["No Data"] = 0;
+    }
+    if (Object.keys(monthlyRevenue).length === 0) {
+      monthlyRevenue["No Data"] = 0;
+    }
+    if (popularRoutes.length === 0) {
+      popularRoutes.push({ route: "No Bookings", count: 0 });
+    }
+
+    res.json({
+      stats: {
+        users: usersCount,
+        rides: ridesCount,
+        bookings: bookingsCount,
+        revenue: revenueSum
+      },
+      monthlyBookings,
+      popularRoutes,
+      monthlyRevenue
+    });
   } catch (error) {
-
+    console.error("Analytics endpoint error:", error);
     res.status(500).json({
-      message:
-        "Analytics Error"
+      message: "Analytics Error"
     });
-
   }
-
 });
 
 const DriverVerification = require("../models/DriverVerification");
@@ -315,7 +348,7 @@ router.post("/verify-driver", async (req, res) => {
         type: "verification"
       });
 
-      await user.save();
+      await user.save({ validateBeforeSave: false });
 
       verification.status = "Approved";
       await verification.save();
@@ -342,23 +375,100 @@ router.post("/verify-driver", async (req, res) => {
           passengerRating,
           isVerified: true
         });
-        await user.save();
+        await user.save({ validateBeforeSave: false });
       } catch (e) {
         console.error("Badge refresh on verify approved failed:", e);
       }
     } else {
       user.isVerifiedDriver = false;
       user.verificationStatus = "Rejected";
-      await user.save();
+      await user.save({ validateBeforeSave: false });
 
       verification.status = "Rejected";
+      if (req.body.adminRemarks) {
+        verification.adminRemarks = req.body.adminRemarks;
+      }
       await verification.save();
+
+      // Notify driver of rejection
+      try {
+        const { createNotification } = require("../utils/notifications");
+        await createNotification({
+          username: user.username,
+          title: "❌ Driver Verification Rejected",
+          message: req.body.adminRemarks
+            ? `Your verification was rejected: ${req.body.adminRemarks}`
+            : "Your driver verification was rejected. Please resubmit with corrected documents.",
+          type: "verification"
+        });
+      } catch (notifErr) {
+        console.warn("Rejection notification failed:", notifErr);
+      }
     }
 
     res.json({ message: `Driver ${decision}` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed" });
+  }
+});
+
+// GET /api/admin/reports - Get all reports for admin
+router.get("/reports", async (_req, res) => {
+  try {
+    const reports = await Report.find().sort({ createdAt: -1 });
+    res.json(reports);
+  } catch (error) {
+    console.error("Failed to load reports:", error);
+    res.status(500).json({ message: "Failed to load reports" });
+  }
+});
+
+// POST /api/admin/report/resolve/:id - Resolve a report
+router.post("/report/resolve/:id", async (req, res) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+    report.status = "Resolved";
+    await report.save();
+    res.json({ message: "Report marked as resolved successfully", report });
+  } catch (error) {
+    console.error("Failed to resolve report:", error);
+    res.status(500).json({ message: "Failed to resolve report" });
+  }
+});
+
+// POST /api/admin/user/suspend/:username - Suspend a user
+router.post("/user/suspend/:username", async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    user.isSuspended = true;
+    await user.save();
+    res.json({ message: `User ${req.params.username} suspended successfully`, user });
+  } catch (error) {
+    console.error("Failed to suspend user:", error);
+    res.status(500).json({ message: "Failed to suspend user" });
+  }
+});
+
+// POST /api/admin/user/unsuspend/:username - Unsuspend a user
+router.post("/user/unsuspend/:username", async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    user.isSuspended = false;
+    await user.save();
+    res.json({ message: `User ${req.params.username} unsuspended successfully`, user });
+  } catch (error) {
+    console.error("Failed to unsuspend user:", error);
+    res.status(500).json({ message: "Failed to unsuspend user" });
   }
 });
 

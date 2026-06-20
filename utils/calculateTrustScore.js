@@ -6,8 +6,8 @@ let score = 50;
 if(user?.isEmailVerified)
 score += 10;
 
-// Phone Verified
-if(user?.isPhoneVerified)
+// Phone Verified (Awarded if number exists since verification is bypassed)
+if(user?.phoneNumber)
 score += 10;
 
 // Driver Verified

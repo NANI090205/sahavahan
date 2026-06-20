@@ -13,7 +13,8 @@ router.get('/:rideId', async (req, res) => {
     if (!rideId) return res.status(400).json({ message: 'rideId is required' });
     if (!username) return res.status(400).json({ message: 'username is required' });
 
-    const booking = await BookedRide.findOne({ rideId, username }).lean();
+    // BookedRide schema uses `bookedBy` not `username`
+    const booking = await BookedRide.findOne({ rideId, bookedBy: username }).lean();
 
     if (!booking) return res.status(404).json({ message: 'Booking not found for passenger' });
 
@@ -25,7 +26,11 @@ router.get('/:rideId', async (req, res) => {
       boardingLat: booking.boardingLat,
       boardingLng: booking.boardingLng,
       dropLat: booking.dropLat,
-      dropLng: booking.dropLng
+      dropLng: booking.dropLng,
+      dropOTP: booking.dropOTP || '',
+      dropOTPVerified: booking.dropOTPVerified || false,
+      boardingOTP: booking.boardingOTP || booking.rideOTP || '',
+      otpVerified: booking.otpVerified || false
     });
   } catch (e) {
     console.error('passenger booking fetch error:', e);

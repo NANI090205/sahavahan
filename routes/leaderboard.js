@@ -6,7 +6,7 @@ const User = require("../models/User");
 // Top drivers by average rating
 router.get("/drivers", async (req, res) => {
   try {
-    const users = await User.find({ role: "driver" })
+    const users = await User.find({ isVerifiedDriver: true })
       .sort({ averageRating: -1 })
       .select({ username: 1, averageRating: 1, completedRides: 1 })
       .limit(10)

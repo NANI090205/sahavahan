@@ -22,7 +22,17 @@ const rideHistorySchema = new mongoose.Schema(
 
     date: String,
 
-    amount: Number
+    amount: Number,
+
+    rideId: {
+      type: String,
+      default: ""
+    },
+
+    passenger: {
+      type: String,
+      default: ""
+    }
   },
   {
     timestamps: true

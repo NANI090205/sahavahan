@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
+const auth = require('../middleware/auth');
+const { memoriesUpload } = require('../middleware/cloudinaryUpload');
 const path = require('path');
 
 const Ride = require('../models/Ride');
@@ -21,29 +22,20 @@ const QRCode = require('qrcode');
 
 const MAX_RIDE_PHOTOS = 5;
 
-const photoStorage = multer.diskStorage({
-  destination: function (_req, _file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (_req, file, cb) {
-    const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
-  },
-});
-
-const uploadPhotos = multer({
-  storage: photoStorage,
-  limits: {
-    fileSize: 10 * 1024 * 1024,
-  },
-});
-
 const calculateTrustScore = require('../utils/calculateTrustScore');
 const recalculateTrustScoreForUser = async (username) => {
   if (!username) return;
   const user = await User.findOne({ username });
   if (!user) return;
   user.trustScore = calculateTrustScore(user);
+  await user.save();
+};
+
+const adjustUserTrustScore = async (username, change) => {
+  if (!username) return;
+  const user = await User.findOne({ username });
+  if (!user) return;
+  user.trustScore = Math.max(0, Math.min(100, (user.trustScore || 50) + change));
   await user.save();
 };
 
@@ -237,62 +229,7 @@ router.post('/publish', async (req, res) => {
   }
 });
 
-// GET: Fetch rides published by a user
-router.get('/user/:uniqueCode', async (req, res) => {
-  try {
-    const rides = await Ride.find({ uniqueCode: req.params.uniqueCode });
 
-    const enriched = await Promise.all(
-      rides.map(async (ride) => {
-        const bookings = await BookedRide.find({ rideId: ride._id });
-        const rideData = ride.toObject();
-
-              { $group: { _id: null, avgRating: { $avg: "$rating" } } }
-            ]);
-          })();
-          const passengerRating = passengerRatingAgg[0]?.avgRating ? Number(passengerRatingAgg[0].avgRating.toFixed(2)) : 0;
-
-          driverUser.badges = calculateBadges({
-            totalRides: completedRides,
-            passengerRating,
-            isVerified: !!driverUser.isVerifiedDriver,
-            isRegularCommuter: true
-          });
-          await driverUser.save();
-        }
-      } catch (e) {
-        console.error("Badge unlock (Regular Commuter) failed:", e);
-      }
-    }
-
-    await createNotification({
-      username,
-      title: "🗓️ Ride Scheduled",
-
-      message: normalizedIsRecurring
-        ? `Your ${normalizedRecurringType} recurring ride from ${source} to ${destination} is scheduled. Next occurrence will be created automatically.`
-        : `Your ride from ${source} to ${destination} on ${date} at ${time} is scheduled.`,
-      type: "ride_published"
-    });
-
-    // Notify subscribed users when a ride is published
-    const subscribers = await RouteSubscription.find({ source, destination });
-    for (const sub of subscribers) {
-      await createNotification({
-        username: sub.username,
-        title: "🚗 New Ride Available",
-        message: `${source} → ${destination}`,
-        type: "general"
-      });
-    }
-
-    res.status(201).json({ message: 'Ride published successfully', rideCode });
-
-  } catch (err) {
-    console.error('❌ Publish ride error:', err);
-    res.status(500).json({ message: 'Error while publishing ride' });
-  }
-});
 
 // GET: Fetch rides published by a user
 router.get('/user/:uniqueCode', async (req, res) => {
@@ -343,9 +280,10 @@ router.get('/booked/:uniqueCode', async (req, res) => {
           totalPrice: booking.totalPrice,
           publishedBy: booking.publishedBy,
           rideCode: ride?.rideCode || 'N/A',
-          status: ride?.status || 'Published',
+          status: booking.status || 'Booked',
           rideOTP: booking.rideOTP || ride?.rideOTP || '',
           boardingOTP: booking.boardingOTP || booking.rideOTP || ride?.rideOTP || '',
+          dropOTP: booking.dropOTP || '',
           otpVerified: booking.otpVerified || false
         };
 
@@ -501,7 +439,12 @@ router.post('/book', async (req, res) => {
       totalPrice,
       rideOTP: boardingOtp,
       boardingOTP: boardingOtp,
-      dropOTP: dropOtp
+      dropOTP: dropOtp,
+      boardingOTPExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      dropOTPExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      boardingOtpAttempts: 0,
+      dropOtpAttempts: 0,
+      status: "Booked"
     });
 
 
@@ -528,16 +471,16 @@ router.post('/book', async (req, res) => {
         <li><strong>Seats Booked:</strong> ${seatsBooked}</li>
         <li><strong>Total Price:</strong> ₹${totalPrice}</li>
      </ul>`
-      ).catch(console.error);
+      }).catch(console.error);
     }
 
     if (bookerUser?.email) {
-        await transporter.sendMail({
+      await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: bookerUser.email,
         subject: '✅ Booking Confirmed',
-        text: `Hello ${bookedBy}, your ride has been successfully booked.`,`}
-        '<h2>Hi ${bookedBy},</h2>
+        text: `Hello ${bookedBy}, your ride has been successfully booked.`,
+        html: `<h2>Hi ${bookedBy},</h2>
      <p>Your booking is confirmed:</p>
      <ul>
         <li><strong>From:</strong> ${ride.source}</li>
@@ -548,7 +491,7 @@ router.post('/book', async (req, res) => {
         <li><strong>Total Price:</strong> ₹${totalPrice}</li>
      </ul>
      <p>– Carpooling Team</p>`
-      ).catch(console.error);
+      }).catch(console.error);
     }
 
     await Promise.all([
@@ -771,7 +714,9 @@ router.delete('/cancel/booked/:bookingId', async (req, res) => {
       source: booking.source,
       destination: booking.destination,
       date: booking.date,
-      amount: booking.totalPrice
+      amount: booking.totalPrice,
+      rideId: String(booking.rideId),
+      passenger: booking.bookedBy
     });
 
     await BookedRide.findByIdAndDelete(bookingId);
@@ -783,7 +728,7 @@ router.delete('/cancel/booked/:bookingId', async (req, res) => {
 });
 
 // POST: Verify passenger OTP and start ride
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', auth, async (req, res) => {
   try {
     const { rideId, otp } = req.body;
 
@@ -794,8 +739,13 @@ router.post('/verify-otp', async (req, res) => {
     const ride = await Ride.findById(rideId);
     if (!ride) return res.status(404).json({ message: 'Ride not found' });
 
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
+    }
+
     // Must be in Scheduled before starting
-    if (ride.status !== 'Scheduled') {
+    if (ride.status !== 'Scheduled' && ride.status !== 'Published' && ride.status !== 'Booked') {
       return res.status(400).json({
         message: `Ride cannot be started from status: ${ride.status}`
       });
@@ -805,42 +755,69 @@ router.post('/verify-otp', async (req, res) => {
     const booking = await BookedRide.findOne({
       rideId,
       rideOTP: String(otp),
-          otpVerified: { $ne: true }
+      otpVerified: { $ne: true }
     });
 
     // If not found by exact otp match, fallback to any booking for ride and compare manually
-    const fallbackBooking = booking ? null : await BookedRide.findOne({ rideId });
+    const fallbackBooking = booking ? null : await BookedRide.findOne({ rideId, otpVerified: { $ne: true } });
 
-    if (!booking) {
-      if (!fallbackBooking) {
-        return res.status(400).json({ message: 'Booking not found for this ride' });
-      }
-
-      if (String(fallbackBooking.rideOTP) !== String(otp)) {
-        return res.status(400).json({ message: 'Invalid OTP' });
-      }
-
-      // OTP matched but it may already be verified
-      if (fallbackBooking.otpVerified) {
-        return res.status(200).json({ message: 'Ride Started' });
-      }
-
-      fallbackBooking.otpVerified = true;
-      fallbackBooking.boardedAt = new Date();
-      await fallbackBooking.save();
-    } else {
-      booking.otpVerified = true;
-      booking.boardedAt = new Date();
-      await booking.save();
+    const targetBooking = booking || fallbackBooking;
+    if (!targetBooking) {
+      return res.status(400).json({ message: 'Booking not found for this ride' });
     }
+
+    // Expiry Check
+    if (targetBooking.boardingOTPExpiry && new Date() > targetBooking.boardingOTPExpiry) {
+      return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Attempt limit Check
+    if (targetBooking.boardingOtpAttempts >= 5) {
+      targetBooking.rideOTP = "";
+      targetBooking.boardingOTP = "";
+      targetBooking.boardingOTPExpiry = null;
+      await targetBooking.save();
+      return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+    }
+
+    const expectedOtp = String(targetBooking.rideOTP || targetBooking.boardingOTP || '');
+    if (expectedOtp !== String(otp)) {
+      targetBooking.boardingOtpAttempts = (targetBooking.boardingOtpAttempts || 0) + 1;
+      if (targetBooking.boardingOtpAttempts >= 5) {
+        targetBooking.rideOTP = "";
+        targetBooking.boardingOTP = "";
+        targetBooking.boardingOTPExpiry = null;
+      }
+      await targetBooking.save();
+      if (targetBooking.boardingOtpAttempts >= 5) {
+        return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+      }
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    // OTP verified
+    targetBooking.otpVerified = true;
+    targetBooking.boardedAt = new Date();
+    targetBooking.boardingOtpAttempts = 0;
+    targetBooking.status = 'Boarded';
+    await targetBooking.save();
 
     // Start ride
     ride.status = 'In Progress';
     ride.rideStartedAt = new Date();
     await ride.save();
 
+    // Set all boarded bookings of this ride to In Progress
+    const bookings = await BookedRide.find({ rideId });
+    for (const b of bookings) {
+      if (b.status === 'Boarded' || b.otpVerified) {
+        b.status = 'In Progress';
+        await b.save();
+      }
+    }
+
     // Notifications
-    const passengerUsername = booking?.bookedBy || (fallbackBooking?.bookedBy);
+    const passengerUsername = targetBooking.bookedBy;
 
     if (passengerUsername) {
       await createNotification({
@@ -874,7 +851,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // Passenger Boarding OTP verification (bookingId + otp)
-router.post('/verify-boarding-otp', async (req, res) => {
+router.post('/verify-boarding-otp', auth, async (req, res) => {
   try {
     const { bookingId, otp } = req.body;
 
@@ -889,19 +866,53 @@ router.post('/verify-boarding-otp', async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    const ride = await Ride.findById(booking.rideId);
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
+    }
+
     // If already verified, keep idempotent
     if (booking.otpVerified) {
       return res.json({ message: 'Passenger Boarded' });
     }
 
+    // Expiry Check
+    if (booking.boardingOTPExpiry && new Date() > booking.boardingOTPExpiry) {
+      return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Attempt limit Check
+    if (booking.boardingOtpAttempts >= 5) {
+      booking.rideOTP = "";
+      booking.boardingOTP = "";
+      booking.boardingOTPExpiry = null;
+      await booking.save();
+      return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+    }
+
     const expectedOtp = String(booking.boardingOTP || booking.rideOTP || '');
 
     if (expectedOtp !== String(otp)) {
+      booking.boardingOtpAttempts = (booking.boardingOtpAttempts || 0) + 1;
+      if (booking.boardingOtpAttempts >= 5) {
+        booking.rideOTP = "";
+        booking.boardingOTP = "";
+        booking.boardingOTPExpiry = null;
+      }
+      await booking.save();
+      if (booking.boardingOtpAttempts >= 5) {
+        return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+      }
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 
     booking.otpVerified = true;
     booking.boardedAt = new Date();
+    booking.boardingOtpAttempts = 0;
+    booking.status = 'Boarded';
     await booking.save();
 
     await createNotification({
@@ -919,13 +930,18 @@ router.post('/verify-boarding-otp', async (req, res) => {
 });
 
 // Driver Start Ride API
-router.put('/start/:rideId', async (req, res) => {
+router.put('/start/:rideId', auth, async (req, res) => {
   try {
     const { rideId } = req.params;
 
     const ride = await Ride.findById(rideId);
     if (!ride) {
       return res.status(404).json({ message: 'Ride not found' });
+    }
+
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
     }
 
     // Backward compatibility: map legacy statuses to Scheduled
@@ -942,6 +958,15 @@ router.put('/start/:rideId', async (req, res) => {
     ride.status = 'In Progress';
     ride.rideStartedAt = new Date();
     await ride.save();
+
+    // Update all boarded bookings of this ride to In Progress
+    const bookings = await BookedRide.find({ rideId });
+    for (const b of bookings) {
+      if (b.status === 'Boarded' || b.otpVerified) {
+        b.status = 'In Progress';
+        await b.save();
+      }
+    }
 
     // Passenger notification (if any booking exists)
     const booking = await BookedRide.findOne({ rideId });
@@ -991,7 +1016,7 @@ router.get('/status/:rideId', async (req, res) => {
 });
 
 // POST: Verify passenger Drop OTP
-router.post('/verify-drop-otp', async (req, res) => {
+router.post('/verify-drop-otp', auth, async (req, res) => {
   try {
     const { bookingId, otp } = req.body;
 
@@ -1005,17 +1030,49 @@ router.post('/verify-drop-otp', async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    const ride = await Ride.findById(booking.rideId);
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
+    }
+
     // idempotent
     if (booking.dropOTPVerified) {
       return res.json({ message: 'Passenger Dropped Successfully' });
     }
 
+    // Expiry Check
+    if (booking.dropOTPExpiry && new Date() > booking.dropOTPExpiry) {
+      return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Attempt limit Check
+    if (booking.dropOtpAttempts >= 5) {
+      booking.dropOTP = "";
+      booking.dropOTPExpiry = null;
+      await booking.save();
+      return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+    }
+
     if (String(booking.dropOTP) !== String(otp)) {
+      booking.dropOtpAttempts = (booking.dropOtpAttempts || 0) + 1;
+      if (booking.dropOtpAttempts >= 5) {
+        booking.dropOTP = "";
+        booking.dropOTPExpiry = null;
+      }
+      await booking.save();
+      if (booking.dropOtpAttempts >= 5) {
+        return res.status(400).json({ message: 'OTP has been invalidated due to too many failed attempts. Please contact support.' });
+      }
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 
     booking.dropOTPVerified = true;
     booking.droppedAt = new Date();
+    booking.dropOtpAttempts = 0;
+    booking.status = 'Completed';
     await booking.save();
 
     // Auto-complete ride when all passengers are dropped
@@ -1025,39 +1082,55 @@ router.post('/verify-drop-otp', async (req, res) => {
     });
 
     if (pendingPassengers === 0) {
-      const ride = await Ride.findById(booking.rideId);
-      if (ride) {
-        if (ride.status === 'In Progress' || ride.status === 'Started' || ride.status === 'Scheduled' || ride.status === 'Published' || ride.status === 'Ongoing') {
-          ride.status = 'Completed';
-          ride.rideCompletedAt = new Date();
-          await ride.save();
+      if (ride.status === 'In Progress' || ride.status === 'Started' || ride.status === 'Scheduled' || ride.status === 'Published' || ride.status === 'Ongoing') {
+        ride.status = 'Completed';
+        ride.rideCompletedAt = new Date();
+        await ride.save();
 
-          await recalculateTrustScoreForUser(ride.username);
+        await recalculateTrustScoreForUser(ride.username);
 
-          await createNotification({
-            username: ride.username,
-            title: "✅ Ride Completed",
-            message: `Thank you for traveling with SahaVahan.`,
-            type: "general"
-          });
+        await createNotification({
+          username: ride.username,
+          title: "✅ Ride Completed",
+          message: `Thank you for traveling with SahaVahan.`,
+          type: "general"
+        });
 
-          await RideHistory.create({
-            username: ride.username,
-            type: "Completed",
-            source: ride.source,
-            destination: ride.destination,
-            date: ride.date,
-            amount: ride.price
-          });
+        await RideHistory.create({
+          username: ride.username,
+          type: "Completed",
+          source: ride.source,
+          destination: ride.destination,
+          date: ride.date,
+          amount: ride.price,
+          rideId: String(ride._id),
+          passenger: ""
+        });
 
-          // Trigger review - current system already creates reviews via /api/reviews; we only notify here.
-          await createNotification({
-            username: booking.bookedBy,
-            title: "⭐ Rate your Ride",
-            message: "Passenger dropped successfully. Please rate your driver.",
-            type: "general"
-          });
+        // Record history for passengers
+        const bookingsForHistory = await BookedRide.find({ rideId: ride._id });
+        for (const booking of bookingsForHistory) {
+          if (booking.status === 'Completed') {
+            await RideHistory.create({
+              username:    booking.bookedBy,
+              type:        'Completed',
+              source:      ride.source,
+              destination: ride.destination,
+              date:        ride.date,
+              amount:      booking.totalPrice,
+              rideId:      String(ride._id),
+              passenger:   booking.bookedBy
+            });
+          }
         }
+
+        // Trigger review - current system already creates reviews via /api/reviews; we only notify here.
+        await createNotification({
+          username: booking.bookedBy,
+          title: "⭐ Rate your Ride",
+          message: "Passenger dropped successfully. Please rate your driver.",
+          type: "general"
+        });
       }
     }
 
@@ -1069,18 +1142,24 @@ router.post('/verify-drop-otp', async (req, res) => {
 });
 
 // PUT: Complete a ride (publisher action)
-router.put('/complete/:rideId', async (req, res) => {
+router.put('/complete/:rideId', auth, async (req, res) => {
   try {
     const { rideId } = req.params;
     const ride = await Ride.findById(rideId);
     if (!ride) return res.status(404).json({ message: 'Ride not found' });
 
-
-
+    // BOLA Check
+    if (ride.username !== req.username) {
+      return res.status(403).json({ message: 'Access denied: You are not the ride owner' });
+    }
 
     // Legacy mapping: Started/Published/Ongoing -> In Progress
     if (ride.status === 'Started' || ride.status === 'Published' || ride.status === 'Booked' || ride.status === 'Ongoing') {
       ride.status = 'In Progress';
+    }
+
+    if (ride.status === 'Completed') {
+      return res.json({ message: 'Ride completed' });
     }
 
     if (ride.status !== 'In Progress') {
@@ -1088,10 +1167,6 @@ router.put('/complete/:rideId', async (req, res) => {
         message: `Ride cannot be completed from status: ${ride.status}`
       });
     }
-
-    ride.status = 'Completed';
-    ride.rideCompletedAt = new Date();
-    await ride.save();
 
     // Prevent early completion: all passengers must complete drop verification
     const pendingPassengers = await BookedRide.countDocuments({
@@ -1104,6 +1179,19 @@ router.put('/complete/:rideId', async (req, res) => {
       return res.status(400).json({
         message: 'All passengers must complete drop verification'
       });
+    }
+
+    ride.status = 'Completed';
+    ride.rideCompletedAt = new Date();
+    await ride.save();
+
+    // Mark remaining active bookings (if any) to Completed
+    const bookings = await BookedRide.find({ rideId });
+    for (const b of bookings) {
+      if (b.status === 'In Progress' || b.status === 'Boarded') {
+        b.status = 'Completed';
+        await b.save();
+      }
     }
 
     // Recalculate trust score based on canonical rules
@@ -1147,8 +1235,27 @@ router.put('/complete/:rideId', async (req, res) => {
       source: ride.source,
       destination: ride.destination,
       date: ride.date,
-      amount: ride.price
+      amount: ride.price,
+      rideId: String(ride._id),
+      passenger: ""
     });
+
+    // Record history for passengers
+    const bookingsForHistory = await BookedRide.find({ rideId: ride._id });
+    for (const booking of bookingsForHistory) {
+      if (booking.status === 'Completed') {
+        await RideHistory.create({
+          username:    booking.bookedBy,
+          type:        'Completed',
+          source:      ride.source,
+          destination: ride.destination,
+          date:        ride.date,
+          amount:      booking.totalPrice,
+          rideId:      String(ride._id),
+          passenger:   booking.bookedBy
+        });
+      }
+    }
 
     // Update driver lifetime earnings + CO2 savings
     try {
@@ -1390,7 +1497,7 @@ router.get('/smart-search', async (req, res) => {
 // Field name in form-data: images
 router.post(
   '/:rideId/photos',
-  uploadPhotos.array('images', MAX_RIDE_PHOTOS),
+  memoriesUpload,
   async (req, res) => {
     try {
       const { rideId } = req.params;
@@ -1421,7 +1528,7 @@ router.post(
         filesToSave.map((file) => ({
           rideId,
           uploadedBy,
-          imageUrl: `/uploads/${file.filename}`
+          imageUrl: file.path
         }))
       );
 

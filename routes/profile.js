@@ -1,23 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const multer = require("multer");
+const { profileUpload } = require("../middleware/cloudinaryUpload");
 
 const User = require("../models/User");
 const Ride = require("../models/Ride");
 const BookedRide = require("../models/BookedRide");
 const Review = require("../models/Review");
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  }
-});
-
-const upload = multer({ storage });
 
 router.get("/stats/:username", async (req, res) => {
   try {
@@ -52,6 +41,51 @@ router.get("/stats/:username", async (req, res) => {
     res.status(500).json({
       message: "Failed"
     });
+  }
+});
+
+// Update Phone Number
+router.post("/update-phone", async (req, res) => {
+  try {
+    const { username, phoneNumber } = req.body;
+    if (!username || !phoneNumber) {
+      return res.status(400).json({ message: "Username and phone number are required" });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.phoneNumber = phoneNumber;
+
+    // Recalculate trust score using canonical rules
+    const calculateTrustScore = require("../utils/calculateTrustScore");
+    user.trustScore = calculateTrustScore(user);
+
+    await user.save({ validateBeforeSave: false });
+
+    res.json({
+      message: "Phone number updated successfully",
+      phoneNumber: user.phoneNumber,
+      trustScore: user.trustScore
+    });
+  } catch (error) {
+    console.error("Update phone error:", error);
+    res.status(500).json({ message: "Failed to update phone number" });
+  }
+});
+
+// Leaderboard
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const users = await User.find()
+      .sort({ co2Saved: -1 })
+      .limit(10);
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Failed" });
   }
 });
 
@@ -109,9 +143,9 @@ router.get("/completion/:username", async (req, res) => {
     if (user.isEmailVerified) score += 20;
     else missing.push("Verify Email");
 
-    // Phone verified (project stores phoneNumber)
+    // Phone added (verification removed)
     if (user.phoneNumber) score += 20;
-    else missing.push("Verify Phone");
+    else missing.push("Add Phone Number");
 
     // Vehicle added
     if (vehicleCount > 0) score += 20;
@@ -131,13 +165,13 @@ router.get("/completion/:username", async (req, res) => {
 });
 
 // Upload Profile Photo
-router.post("/upload/:username", upload.single("photo"), async (req, res) => {
+router.post("/upload/:username", profileUpload, async (req, res) => {
   try {
     const user = await User.findOne({ username: req.params.username });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.profilePhoto = "/uploads/" + req.file.filename;
-    await user.save();
+    user.profilePhoto = req.file ? req.file.path : "";
+    await user.save({ validateBeforeSave: false });
 
     res.json({ message: "Photo uploaded", photo: user.profilePhoto });
   } catch (error) {
@@ -146,17 +180,6 @@ router.post("/upload/:username", upload.single("photo"), async (req, res) => {
   }
 });
 
-router.get("/leaderboard", async (req, res) => {
-  try {
-    const users = await User.find()
-      .sort({ co2Saved: -1 })
-      .limit(10);
-
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Failed" });
-  }
-});
 
 
 module.exports = router;

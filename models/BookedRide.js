@@ -126,6 +126,38 @@ const bookedRideSchema = new mongoose.Schema(
 
     droppedAt: {
         type: Date
+    },
+
+    status: {
+        type: String,
+        enum: [
+            "Booked",
+            "Boarded",
+            "In Progress",
+            "Completed",
+            "Cancelled"
+        ],
+        default: "Booked"
+    },
+
+    boardingOtpAttempts: {
+        type: Number,
+        default: 0
+    },
+
+    dropOtpAttempts: {
+        type: Number,
+        default: 0
+    },
+
+    boardingOTPExpiry: {
+        type: Date,
+        default: null
+    },
+
+    dropOTPExpiry: {
+        type: Date,
+        default: null
     }
 }, 
 {

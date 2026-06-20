@@ -2,7 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 const SOS = require("../models/SOS");
-const sendMail = require("../utils/mailer");
+const transporter = require("../utils/mailer");
+const sendMail = async (to, subject, text) => {
+  return transporter.sendMail({
+    from: process.env.EMAIL_USER || "",
+    to,
+    subject,
+    text
+  });
+};
 
 // Legacy endpoint kept
 router.post("/create", async (req, res) => {
@@ -91,7 +99,9 @@ router.post("/trigger", async (req, res) => {
   }
 });
 
-router.get("/all", async (req, res) => {
+const adminAuthMiddleware = require("../middleware/adminAuth");
+
+router.get("/all", adminAuthMiddleware, async (req, res) => {
   try {
     const alerts = await SOS.find()
       .sort({
