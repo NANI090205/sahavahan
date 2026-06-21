@@ -2,14 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 const SOS = require("../models/SOS");
-const transporter = require("../utils/mailer");
+const emailService = require("../utils/emailService");
 const sendMail = async (to, subject, text) => {
-  return transporter.sendMail({
-    from: process.env.EMAIL_USER || "",
-    to,
-    subject,
-    text
-  });
+  return emailService.sendEmergencyEmail(to, subject, text);
 };
 
 // Legacy endpoint kept

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
-const transporter = require("../utils/mailer");
+const emailService = require("../utils/emailService");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
@@ -64,28 +64,7 @@ router.post("/forgot-password", otpRateLimiter(10 * 60 * 1000, 5, "Too many pass
     await user.save();
 
     try {
-      await transporter.sendMail({
-        from: "onboarding@resend.dev",
-        to: email,
-      subject: "SahaVahan Password Reset OTP",
-      html: `
-
-<div style="font-family:Arial;padding:20px;">
-
-<h2>🔐 SahaVahan</h2>
-
-<p>Your OTP is:</p>
-
-<h1>${otp}</h1>
-
-<p>
-Valid for 10 minutes.
-</p>
-
-</div>
-
-`
-    });
+      await emailService.sendPasswordResetEmail(email, otp);
 
       console.log("OTP Email Sent Successfully");
     } catch (sendErr) {
@@ -311,25 +290,14 @@ const newUser = new User({
     console.log("[OTP] Generated OTP:", otp);
     console.log("[Resend] RESEND_API_KEY present:", !!process.env.RESEND_API_KEY);
 
-    try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER || "",
-      to: email,
-        subject: "SahaVahan Email Verification",
-        html: `
-    <h2>Welcome to SahaVahan 🚗</h2>
-    <p>Your Email Verification OTP:</p>
-    <h1>${otp}</h1>
-    <p>This OTP expires in 10 minutes.</p>
-  `,
+    emailService.sendOtpEmail(email, otp)
+      .then(() => console.log("OTP Email Sent Successfully"))
+      .catch((sendErr) => {
+        console.error("[OTP] Email send failed:", sendErr);
+        console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
       });
 
-      console.log("OTP Email Sent Successfully");
-    } catch (sendErr) {
-      console.error("[OTP] Email send failed:", sendErr);
-      console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
-      // Do not return 500, allow signup to proceed so developer can test using console OTP.
-    }
+ 
 
     const userReferralCode = username.toUpperCase() + uniqueCode;
 
@@ -509,24 +477,14 @@ router.post("/resend-email-otp", otpRateLimiter(10 * 60 * 1000, 5, "Too many req
     console.log("[OTP-RESEND] Generated OTP:", otp);
     console.log("[Resend] RESEND_API_KEY present:", !!process.env.RESEND_API_KEY);
 
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "SahaVahan Email Verification",
-        html: `
-    <h2>Welcome to SahaVahan 🚗</h2>
-    <p>Your Email Verification OTP:</p>
-    <h1>${otp}</h1>
-    <p>This OTP expires in 10 minutes.</p>
-  `,
+    emailService.sendOtpEmail(email, otp)
+      .then(() => console.log("OTP Email Sent Successfully"))
+      .catch((sendErr) => {
+        console.error("[OTP-RESEND] Email send failed:", sendErr);
+        console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
       });
 
-      console.log("OTP Email Sent Successfully");
-    } catch (sendErr) {
-      console.error("[OTP-RESEND] Email send failed:", sendErr);
-      console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
-    }
+ 
 
     res.json({
       message: "OTP Sent Successfully"
@@ -547,9 +505,9 @@ router.post("/login", async (req, res) => {
       // Accept login by either email or username
       let user = null;
       if (email) {
-        user = await User.findOne({ email });
+        user = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, "i") } });
       } else if (username) {
-        user = await User.findOne({ username });
+        user = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, "i") } });
       }
   
       if (!user) {

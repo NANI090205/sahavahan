@@ -9,7 +9,7 @@ const BookedRide = require('../models/BookedRide');
 const RidePhoto = require('../models/RidePhoto');
 const User = require('../models/User');
 const RideHistory = require('../models/RideHistory');
-const transporter = require('../utils/mailer');
+const emailService = require('../utils/emailService');
 const { createNotification } = require('../utils/notifications');
 const RouteSubscription = require('../models/RouteSubscription');
 
@@ -456,42 +456,11 @@ router.post('/book', async (req, res) => {
     const bookerUser = await User.findOne({ username: bookedBy });
 
     if (publisherUser?.email) {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: publisherUser.email,
-        subject: '🚗 Your Ride Has Been Booked!',
-        text: `Hello ${publishedBy}, your ride was booked by ${bookedBy}.`,
-        html: `<h2>Hi ${publishedBy},</h2>
-     <p>Your ride has been booked:</p>
-     <ul>
-        <li><strong>From:</strong> ${ride.source}</li>
-        <li><strong>To:</strong> ${ride.destination}</li>
-        <li><strong>Date:</strong> ${ride.date}</li>
-        <li><strong>Time:</strong> ${ride.time}</li>
-        <li><strong>Seats Booked:</strong> ${seatsBooked}</li>
-        <li><strong>Total Price:</strong> ₹${totalPrice}</li>
-     </ul>`
-      }).catch(console.error);
+      await emailService.sendRideBookingEmail(publisherUser.email, publishedBy, bookedBy, ride, seatsBooked, totalPrice, true).catch(console.error);
     }
 
     if (bookerUser?.email) {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: bookerUser.email,
-        subject: '✅ Booking Confirmed',
-        text: `Hello ${bookedBy}, your ride has been successfully booked.`,
-        html: `<h2>Hi ${bookedBy},</h2>
-     <p>Your booking is confirmed:</p>
-     <ul>
-        <li><strong>From:</strong> ${ride.source}</li>
-        <li><strong>To:</strong> ${ride.destination}</li>
-        <li><strong>Date:</strong> ${ride.date}</li>
-        <li><strong>Time:</strong> ${ride.time}</li>
-        <li><strong>Seats:</strong> ${seatsBooked}</li>
-        <li><strong>Total Price:</strong> ₹${totalPrice}</li>
-     </ul>
-     <p>– Carpooling Team</p>`
-      }).catch(console.error);
+      await emailService.sendRideBookingEmail(bookerUser.email, publishedBy, bookedBy, ride, seatsBooked, totalPrice, false).catch(console.error);
     }
 
     await Promise.all([
@@ -539,14 +508,7 @@ router.delete('/cancel/published/:rideId', async (req, res) => {
     for (const booking of bookings) {
       const bookerUser = await User.findOne({ username: booking.bookedBy });
       if (bookerUser?.email) {
-        await sendMail(
-          bookerUser.email,
-          'Ride Cancelled by Publisher',
-          `Your ride has been cancelled.`,
-          `<h3>Hi ${bookerUser.username},</h3>
-           <p>Your booking from <strong>${ride.source}</strong> to <strong>${ride.destination}</strong> on <strong>${ride.date}</strong> has been cancelled by the publisher.</p>
-           <p>Sorry for the inconvenience.</p>`
-        );
+        await emailService.sendRideCancellationEmail(bookerUser.email, bookerUser.username, false, ride).catch(console.error);
       }
     }
 
@@ -682,14 +644,7 @@ router.delete('/cancel/booked/:bookingId', async (req, res) => {
 
     const publisherUser = await User.findOne({ username: booking.publishedBy });
     if (publisherUser?.email) {
-      await sendMail(
-        publisherUser.email,
-        '❌ Booking has been Cancelled by User',
-        `${booking.bookedBy} cancelled the booking.`,
-        `<h3>Hi ${publisherUser.username},</h3>
-         <p><strong>${booking.bookedBy}</strong> has cancelled their booking for your ride.</p>
-         <p>Freed Seats: ${booking.seatsBooked}</p>`
-      );
+      await emailService.sendRideCancellationEmail(publisherUser.email, publisherUser.username, true, ride, booking).catch(console.error);
     }
 
     await adjustUserTrustScore(booking.bookedBy, -3);

@@ -6,8 +6,7 @@ const path = require("path");
 const cors = require("cors");
 
 const app = express();
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_APP_PASSWORD:", !!process.env.EMAIL_APP_PASSWORD);
+
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI;
 
