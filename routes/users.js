@@ -272,30 +272,7 @@ const newUser = new User({
     const savedUser =
       await newUser.save();
 
-    // Generate email verification OTP
-    const otp = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString();
 
-    savedUser.emailOtp = otp;
-    savedUser.emailOtpAttempts = 0;
-    savedUser.emailOtpExpiry = new Date(
-      Date.now() + 10 * 60 * 1000
-    );
-
-    await savedUser.save();
-
-    // Send verification email
-    console.log("[OTP] Sending OTP to:", email);
-    console.log("[OTP] Generated OTP:", otp);
-    console.log("[Resend] RESEND_API_KEY present:", !!process.env.RESEND_API_KEY);
-
-    emailService.sendOtpEmail(email, otp)
-      .then(() => console.log("OTP Email Sent Successfully"))
-      .catch((sendErr) => {
-        console.error("[OTP] Email send failed:", sendErr);
-        console.log(`[DEV MODE] Email failed to send. Please use the OTP printed above (${otp}) to verify your account.`);
-      });
 
  
 
@@ -525,13 +502,7 @@ router.post("/login", async (req, res) => {
         });
       }
 
-      if (!user.isEmailVerified) {
-        return res.status(403).json({
-          message: "Please verify your email before logging in.",
-          requiresEmailVerification: true,
-          email: user.email
-        });
-      }
+
   
       const role = user.role || "user";
       const token = jwt.sign({ userId: user._id, username: user.username, role }, JWT_SECRET, { expiresIn: "24h" });

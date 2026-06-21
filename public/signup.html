@@ -430,20 +430,10 @@
             const data = await res.json();
 
             if (res.ok && data.success) {
-              // Cache data context fields locally
-              localStorage.setItem("pendingVerificationEmail", targetedEmail);
-              verificationEmailInput.value = targetedEmail;
-
-              // Transition screen states seamlessly
-              signupForm.classList.add("hidden");
-              otpSection.classList.remove("hidden");
-
-              // Update Header Content
-              flowEyebrow.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Step 2 of 2`;
-              flowTitle.textContent = "Confirm Identity";
-              flowSubtitle.textContent = "Please enter the authentication OTP code transmitted to your email address.";
-              
-              displayFeedback("success", "Registration profile initiated! A confirmation code was delivered to your mailbox.");
+              displayFeedback("success", "Registration profile initiated! Redirecting to login...");
+              setTimeout(() => {
+                window.location.href = "login.html";
+              }, 2000);
             } else {
               displayFeedback("error", data.message || "Signup submission failed. Please verify configurations.");
               signupBtn.disabled = false;
